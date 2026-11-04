@@ -2,7 +2,7 @@ import Foundation
 
 /// Adapts the public OSRM-compatible endpoints to Ferrostar's banner and speech format.
 public enum RoutePreparation {
-    public static func prepare(_ data: Data) throws -> Data {
+    public static func prepare(_ data: Data, expectedOrigin: Coordinate? = nil, expectedDestination: Coordinate? = nil) throws -> Data {
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               root["code"] as? String == "Ok",
               var route = (root["routes"] as? [[String: Any]])?.first,
@@ -14,6 +14,8 @@ public enum RoutePreparation {
         }
         let points = try decodePolyline6(geometry)
         guard (2...50_000).contains(points.count) else { throw ServiceError.invalidResponse }
+        if let expectedOrigin, expectedOrigin.distance(to: points[0]) > 1500 { throw ServiceError.noRoute }
+        if let expectedDestination, expectedDestination.distance(to: points[points.count - 1]) > 1500 { throw ServiceError.noRoute }
         var allSteps = [[String: Any]]()
         var legSizes = [Int]()
         for leg in legs {
@@ -50,6 +52,16 @@ public enum RoutePreparation {
                     "distanceAlongGeometry": min(distance, 300),
                     "primary": ["text": instruction, "components": [["type": "text", "text": instruction]]]
                 ]]
+            } else if var banners = allSteps[index]["bannerInstructions"] as? [[String: Any]] {
+                for banner in banners.indices {
+                    for key in ["primary", "secondary", "sub"] {
+                        if var content = banners[banner][key] as? [String: Any], content["components"] == nil {
+                            content["components"] = []
+                            banners[banner][key] = content
+                        }
+                    }
+                }
+                allSteps[index]["bannerInstructions"] = banners
             }
         }
         var offset = 0

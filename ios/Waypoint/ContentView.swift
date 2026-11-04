@@ -16,7 +16,7 @@ struct ContentView: View {
             VStack(spacing: 12) {
                 header
                 if model.navigating { guidance }
-                if let problem = model.locationProblem ?? model.mapError ?? model.message {
+                if let problem = model.locationProblem ?? (model.gpsStale ? "GPS position is stale. Waiting for a fresh location." : nil) ?? model.mapError ?? model.message {
                     HStack(alignment: .top) {
                         Image(systemName: "exclamationmark.triangle.fill")
                         Text(problem).font(.footnote)
@@ -55,6 +55,12 @@ struct ContentView: View {
             }
         }
         .fullScreenCover(isPresented: $model.showWelcome) { WelcomeView(model: model) }
+        .task {
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(5)) } catch { return }
+                model.checkGPS()
+            }
+        }
     }
 
     private var header: some View {

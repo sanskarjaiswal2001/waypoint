@@ -81,6 +81,12 @@ final class MapServiceTests: XCTestCase {
         XCTAssertThrowsError(try RoutePreparation.prepare(response(distance: 0)))
     }
 
+    func testRoutesFarFromRequestedEndpointsAreRejected() throws {
+        XCTAssertThrowsError(try RoutePreparation.prepare(response(), expectedOrigin: origin, expectedDestination: destination))
+        XCTAssertNoThrow(try RoutePreparation.prepare(response(), expectedOrigin: Coordinate(latitude: 0, longitude: 0),
+                                                       expectedDestination: Coordinate(latitude: 0.1, longitude: 0.1)))
+    }
+
     func testArrivalAndRoundaboutInstructions() {
         XCTAssertEqual(RoutePreparation.instruction(for: ["maneuver": ["type": "arrive"]]), "You have arrived at your destination")
         XCTAssertEqual(RoutePreparation.instruction(for: ["maneuver": ["type": "roundabout", "exit": 3], "name": "Example Road"]),

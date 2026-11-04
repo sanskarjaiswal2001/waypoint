@@ -19,7 +19,7 @@ public struct MapService: Sendable {
 
     public func routeData(from: Coordinate, to: Coordinate, mode: TravelMode) async throws -> Data {
         let url = try Self.routeURL(from: from, to: to, mode: mode)
-        return try RoutePreparation.prepare(await fetch(url, limit: 8 * 1024 * 1024))
+        return try RoutePreparation.prepare(await fetch(url, limit: 8 * 1024 * 1024), expectedOrigin: from, expectedDestination: to)
     }
 
     public static func routeURL(from: Coordinate, to: Coordinate, mode: TravelMode) throws -> URL {

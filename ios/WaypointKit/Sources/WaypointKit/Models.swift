@@ -12,6 +12,14 @@ public struct Coordinate: Codable, Hashable, Sendable {
     public var isValid: Bool {
         latitude.isFinite && longitude.isFinite && (-90...90).contains(latitude) && (-180...180).contains(longitude)
     }
+
+    public func distance(to other: Coordinate) -> Double {
+        let radians = Double.pi / 180
+        let lat = (other.latitude - latitude) * radians
+        let lon = (other.longitude - longitude) * radians
+        let a = pow(sin(lat / 2), 2) + cos(latitude * radians) * cos(other.latitude * radians) * pow(sin(lon / 2), 2)
+        return 6_371_000 * 2 * atan2(sqrt(max(0, min(1, a))), sqrt(max(0, 1 - a)))
+    }
 }
 
 public struct Place: Codable, Hashable, Identifiable, Sendable {

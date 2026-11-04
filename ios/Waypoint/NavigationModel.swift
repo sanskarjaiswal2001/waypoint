@@ -44,6 +44,7 @@ final class NavigationModel: NSObject {
     var message: String?
     var fix: CLLocation?
     var locationProblem: String?
+    var gpsStale = false
     var cameraRequest = UUID()
     var followLocation = true
     var tilted = false
@@ -72,7 +73,10 @@ final class NavigationModel: NSObject {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") { showWelcome = true }
         #endif
-        location.$fix.receive(on: DispatchQueue.main).sink { [weak self] in self?.fix = $0 }.store(in: &subscriptions)
+        location.$fix.receive(on: DispatchQueue.main).sink { [weak self] in
+            self?.fix = $0
+            self?.gpsStale = false
+        }.store(in: &subscriptions)
         location.$problem.receive(on: DispatchQueue.main).sink { [weak self] problem in
             guard let self else { return }
             self.locationProblem = problem
@@ -240,6 +244,10 @@ final class NavigationModel: NSObject {
     func sceneChanged(_ phase: ScenePhase) {
         if phase == .background && !navigating { location.stopUpdating() }
         if phase == .active && fix != nil { location.startUpdating() }
+    }
+
+    func checkGPS() {
+        gpsStale = fix.map { abs($0.timestamp.timeIntervalSinceNow) >= 15 } ?? false
     }
 
     private func cancelRoute() {
