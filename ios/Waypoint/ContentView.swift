@@ -16,13 +16,23 @@ struct ContentView: View {
             VStack(spacing: 12) {
                 header
                 if model.navigating { guidance }
-                if let problem = model.locationProblem ?? (model.gpsStale ? "GPS position is stale. Waiting for a fresh location." : nil) ?? model.mapError ?? model.message {
+                if let problem = model.mapError {
+                    HStack(alignment: .top) {
+                        Image(systemName: "map.fill")
+                        Text(problem).font(.footnote)
+                        Spacer(minLength: 0)
+                        Button("Retry map") { model.retryMap() }.font(.footnote.bold())
+                    }.padding(14).background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 16))
+                }
+                if let problem = model.locationProblem ?? (model.gpsStale ? "GPS position is stale. Waiting for a fresh location." : nil) ?? model.message {
                     HStack(alignment: .top) {
                         Image(systemName: "exclamationmark.triangle.fill")
                         Text(problem).font(.footnote)
                         Spacer(minLength: 0)
-                        Button { model.message = nil; model.mapError = nil } label: { Image(systemName: "xmark") }
-                            .accessibilityLabel("Dismiss message")
+                        if model.locationProblem == nil && !model.gpsStale {
+                            Button { model.message = nil } label: { Image(systemName: "xmark") }
+                                .accessibilityLabel("Dismiss message")
+                        }
                     }.padding(14).background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 16))
                 }
                 Spacer(minLength: 0)

@@ -20,11 +20,11 @@ struct World: Decodable, Identifiable, Hashable {
         return worlds
     }()
 
-    func styleJSON() throws -> String {
+    func styleURL() throws -> URL {
         guard let url = Bundle.main.url(forResource: id, withExtension: "json", subdirectory: "styles") else {
             throw CocoaError(.fileNoSuchFile)
         }
-        return try String(contentsOf: url, encoding: .utf8)
+        return url
     }
 }
 

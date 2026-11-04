@@ -50,6 +50,7 @@ final class NavigationModel: NSObject {
     var tilted = false
     var muted = false
     var mapError: String?
+    var mapReloadRequest = UUID()
     var showWelcome = !UserDefaults.standard.bool(forKey: "onboarded")
 
     @ObservationIgnored let location = LocationSource()
@@ -75,7 +76,7 @@ final class NavigationModel: NSObject {
         #endif
         location.$fix.receive(on: DispatchQueue.main).sink { [weak self] in
             self?.fix = $0
-            self?.gpsStale = false
+            self?.gpsStale = $0.map { !LocationUpdateWatchdog.isFresh($0.timestamp) } ?? false
         }.store(in: &subscriptions)
         location.$problem.receive(on: DispatchQueue.main).sink { [weak self] problem in
             guard let self else { return }
@@ -92,7 +93,7 @@ final class NavigationModel: NSObject {
 
     var hasFreshFix: Bool {
         guard let fix else { return false }
-        return abs(fix.timestamp.timeIntervalSinceNow) < 15 && (0...65).contains(fix.horizontalAccuracy) && locationProblem == nil
+        return LocationUpdateWatchdog.isFresh(fix.timestamp) && (0...65).contains(fix.horizontalAccuracy) && locationProblem == nil
     }
 
     var duration: Double { navigation?.currentProgress?.durationRemaining ?? route?.steps.reduce(0) { $0 + $1.duration } ?? 0 }
@@ -112,6 +113,11 @@ final class NavigationModel: NSObject {
         location.request()
         followLocation = true
         cameraRequest = UUID()
+    }
+
+    func retryMap() {
+        mapError = nil
+        mapReloadRequest = UUID()
     }
 
     func select(_ place: Place) {
@@ -242,12 +248,13 @@ final class NavigationModel: NSObject {
     }
 
     func sceneChanged(_ phase: ScenePhase) {
-        if phase == .background && !navigating { location.stopUpdating() }
-        if phase == .active && fix != nil { location.startUpdating() }
+        if phase == .background { location.setForeground(false) }
+        if phase == .active { location.setForeground(true) }
     }
 
     func checkGPS() {
-        gpsStale = fix.map { abs($0.timestamp.timeIntervalSinceNow) >= 15 } ?? false
+        gpsStale = fix.map { !LocationUpdateWatchdog.isFresh($0.timestamp) } ?? false
+        location.refreshIfNeeded()
     }
 
     private func cancelRoute() {

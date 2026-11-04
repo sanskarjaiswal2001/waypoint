@@ -20,6 +20,14 @@ For updates, import the newer IPA using the same installer, account and app iden
 shasum -a 256 -c SHA256SUMS-iOS
 ```
 
+## Location troubleshooting
+
+If the position becomes stale, tap **Locate** to restart location acquisition. Keep the app in the foreground and allow time for a precise fix with a clear view of the sky. A cached position stays marked stale until a new reading arrives; route preview and navigation still require a fresh, accurate fix.
+
+Map loading uses an independent connection to the tile provider. If the map is blank, wait for the loading message and tap **Retry map**. Map errors are shown separately from GPS warnings, so a location issue cannot hide a map-loading failure. Check connectivity to `tiles.openfreemap.org` if loading fails across all worlds.
+
+When running inside **LiveContainer**, check **iOS Settings → Privacy & Security → Location Services → LiveContainer** (or the specific LiveContainer instance hosting the app). Allow **While Using the App** and enable **Precise Location**, then reopen Waypoint and tap **Locate**. Guest apps share the host's permissions; see [LiveContainer's permission discussion](https://github.com/LiveContainer/LiveContainer/issues/401). Background location while hosted still needs separate device validation. A direct SideStore/AltStore installation can help distinguish host-specific behavior.
+
 ## Build
 
 ### SwiftPM and xtool

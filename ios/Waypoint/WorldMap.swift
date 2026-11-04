@@ -9,8 +9,13 @@ struct WorldMap: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(model: model) }
 
     func makeUIView(context: Context) -> MLNMapView {
-        let map = MLNMapView(frame: .zero)
+        let styleURL = try? model.world.styleURL()
+        let map = MLNMapView(frame: .zero, styleURL: styleURL)
+        map.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         map.delegate = context.coordinator
+        context.coordinator.worldID = model.world.id
+        context.coordinator.mapReloadRequest = model.mapReloadRequest
+        if styleURL == nil { context.coordinator.report("The bundled map style could not load.") }
         map.setCenter(CLLocationCoordinate2D(latitude: 51.5, longitude: -0.12), zoomLevel: 10, animated: false)
         map.logoView.isHidden = true
         map.attributionButton.isHidden = true
@@ -21,6 +26,7 @@ struct WorldMap: UIViewRepresentable {
         pan.delegate = context.coordinator
         map.addGestureRecognizer(pan)
         context.coordinator.map = map
+        context.coordinator.watchLoading()
         return map
     }
 
@@ -30,8 +36,15 @@ struct WorldMap: UIViewRepresentable {
         if coordinator.worldID != model.world.id {
             coordinator.worldID = model.world.id
             coordinator.ready = false
-            do { map.styleJSON = try model.world.styleJSON() }
+            coordinator.watchLoading()
+            do { map.styleURL = try model.world.styleURL() }
             catch { coordinator.report("The bundled map style could not load.") }
+        }
+        if coordinator.mapReloadRequest != model.mapReloadRequest {
+            coordinator.mapReloadRequest = model.mapReloadRequest
+            coordinator.ready = false
+            coordinator.watchLoading()
+            map.reloadStyle(nil)
         }
         map.showsUserLocation = model.fix != nil
         if coordinator.ready { coordinator.renderRoute() }
@@ -54,6 +67,7 @@ struct WorldMap: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ map: MLNMapView, coordinator: Coordinator) {
+        coordinator.cancelLoadingWatch()
         map.delegate = nil
         map.showsUserLocation = false
     }
@@ -64,12 +78,28 @@ struct WorldMap: UIViewRepresentable {
         var worldID: String?
         var ready = false
         var cameraRequest: UUID?
+        var mapReloadRequest: UUID?
         var tilted = false
         private var renderedRoute: [CLLocationCoordinate2D] = []
         private var routeKey: Int?
         private var destinationID: String?
+        private var loadingTimeout: DispatchWorkItem?
 
         init(model: NavigationModel) { self.model = model }
+
+        func watchLoading() {
+            cancelLoadingWatch()
+            let timeout = DispatchWorkItem { [weak self] in
+                self?.report("Map tiles have not finished loading. Check your connection or retry the map.")
+            }
+            loadingTimeout = timeout
+            DispatchQueue.main.asyncAfter(deadline: .now() + 25, execute: timeout)
+        }
+
+        func cancelLoadingWatch() {
+            loadingTimeout?.cancel()
+            loadingTimeout = nil
+        }
 
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             for name in ["paper-fibre", "pixel-grass", "pixel-stone", "pixel-water"] {
@@ -93,12 +123,15 @@ struct WorldMap: UIViewRepresentable {
             ready = true
             routeKey = nil
             renderRoute()
+        }
+
+        func mapViewDidFinishLoadingMap(_ mapView: MLNMapView) {
+            cancelLoadingWatch()
             DispatchQueue.main.async { self.model.mapError = nil }
         }
 
-        func mapViewDidFinishLoadingMap(_ mapView: MLNMapView) {}
-
         func mapViewDidFailLoadingMap(_ mapView: MLNMapView, withError error: Error) {
+            cancelLoadingWatch()
             report("Map could not load. Check your internet connection.")
         }
 
