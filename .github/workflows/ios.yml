@@ -7,18 +7,24 @@ on:
   pull_request:
     paths: ['ios/**', 'scripts/*ios*', 'app/src/main/assets/**', 'app/src/main/java/com/waypoint/app/World.kt', '.github/workflows/ios.yml']
   workflow_dispatch:
+    inputs:
+      runner:
+        description: macOS build runner
+        type: choice
+        options: [macos-26, macos-15-intel]
+        default: macos-26
 
 permissions:
   contents: read
 
 concurrency:
-  group: ios-${{ github.ref }}
+  group: ios-${{ github.ref }}-${{ inputs.runner || 'macos-26' }}
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   build:
     name: Test and build unsigned IPA
-    runs-on: macos-26
+    runs-on: ${{ inputs.runner || 'macos-26' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
