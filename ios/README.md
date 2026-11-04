@@ -6,7 +6,7 @@ A native SwiftUI port for iPhone and iPad on iOS 17 or later. Development and An
 
 The source includes themed phone HUDs, POI layers, onboarding, search, route controls, saved places and preferences. Read the [feature comparison](PARITY.md) for partial implementations and missing Android behaviours. The [validation record](VALIDATION.md) lists completed checks and tests that still need to run.
 
-This is an experimental preview. The newer phone UI, GPS behaviour, speech and background guidance still need device testing. CarPlay, Android's APK installer and satellite counts are outside this port. The GitHub README's promotional screenshots show Android.
+This is an experimental preview. Navigation is reported working through LiveContainer, and [device screenshots](../docs/images/ios/README.md) show the Night City and Los Santos phone UI. GPS edge cases, speech and background guidance still need repeatable device checks. CarPlay, Android's APK installer and satellite counts are outside this port. The GitHub README's promotional artwork shows Android; its iOS section contains the device screenshots.
 
 ## Install through SideStore or AltStore Classic
 
@@ -22,7 +22,7 @@ To open a shared `geo:` or `google.navigation:` destination, paste it into **Sea
 
 The IPA is unsigned and cannot be installed by tapping it directly in Files. It contains one arm64 device app, no app extensions and no restricted CarPlay entitlement. SideStore/AltStore handles signing and refresh. Free-account signatures normally need refreshing within seven days; follow the installer's current guidance and account limits. AltStore PAL is a different distribution system and does not use the IPA-import route described here.
 
-LiveContainer can also import the IPA. Basic launch and map rendering were reported on an earlier preview; the 0.2.0 UI and navigation flows still need checks there. Keep the same app container when updating to retain local data, and manage location permission on the LiveContainer instance hosting Waypoint.
+LiveContainer can also import the IPA. Navigation is reported working there, with device captures of the themed maps and destination controls. See the [validation record](VALIDATION.md#device-report) for the report's scope and remaining checks. Keep the same app container when updating to retain local data, and manage location permission on the LiveContainer instance hosting Waypoint.
 
 For updates, import the newer IPA using the same installer, account and app identity. Avoid deleting the existing app if you want to keep its saved places. Checksums are published in **SHA256SUMS-iOS**:
 

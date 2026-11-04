@@ -20,6 +20,9 @@ blocked_roots = (
 blocked_suffixes = {".apk", ".aab", ".ipa", ".mobileprovision", ".log", ".pyc", ".mov", ".webm", ".avi", ".pdf"}
 blocked_suffixes |= {".keystore", ".jks", ".p12", ".pem"}
 readme_media = {
+    "docs/images/ios/night-city-apple-valley.png",
+    "docs/images/ios/night-city-destination.png",
+    "docs/images/ios/los-santos-destination.png",
     "docs/images/waypoint-icon.png",
     "docs/images/promo/download.jpg",
     "docs/images/promo/hero.jpg",

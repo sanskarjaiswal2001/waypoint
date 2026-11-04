@@ -132,6 +132,16 @@ Progress and remaining work are tracked in [issue #12](https://github.com/the-ge
 
 Unsigned [iOS preview builds](https://github.com/sanskarjaiswal2001/waypoint/releases) are currently published on the contributor's fork for installation through LiveContainer, SideStore or AltStore Classic. Read the [feature comparison](ios/PARITY.md) and [iOS validation record](ios/VALIDATION.md) for known gaps and tests that have run. The promotional screenshots above show Android.
 
+Navigation is reported working on an iPhone through LiveContainer. These device screenshots show selected destinations in Night City and Los Santos:
+
+<p align="center">
+  <img src="docs/images/ios/night-city-apple-valley.png" width="30%" alt="iOS Night City map with Apple Valley selected and route preview controls." />
+  <img src="docs/images/ios/night-city-destination.png" width="30%" alt="iOS Night City map with a public destination in Ecuador selected." />
+  <img src="docs/images/ios/los-santos-destination.png" width="30%" alt="iOS Los Santos map showing the same destination and route preview controls." />
+</p>
+
+<p><sub>The captures show selected destinations, with no current-location view included. Status-bar items were removed without cropping, and metadata was stripped. <a href="docs/images/ios/README.md">Screenshot notes</a>.</sub></p>
+
 ## Get Waypoint
 
 **[Download Waypoint.apk from GitHub Releases →](https://github.com/the-geeky-couldron/waypoint/releases/latest)**

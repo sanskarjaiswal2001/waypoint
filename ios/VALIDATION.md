@@ -12,13 +12,17 @@ This record covers the 0.2.0 preview and the contribution branch. Android's resu
 - All 27 HUDs were rendered with synthetic display state at regular phone, compact phone and landscape dimensions using macOS SwiftUI. The font checks confirm that all 17 UI fonts register. These renders assess layout; they do not exercise the iPhone map renderer, location provider or touch handling.
 - The repository hygiene check passes. Generated apps, IPAs, local renders and logs stay outside tracked files.
 
-Basic launch and map rendering were reported through LiveContainer on the earlier preview. That report predates the 0.2.0 themed UI. It does not establish fresh GPS acquisition, navigation or background behaviour for this version.
+## Device report
+
+On 5 November 2026, the device tester reported navigation working on an iPhone installed through LiveContainer. The supplied screenshots show the themed phone UI and rendered maps for Night City and Los Santos, with selected destinations and route preview controls. They are included in the [README](../README.md#ios-port-work-in-progress), with [capture and editing notes](../docs/images/ios/README.md).
+
+This is a user report, without a recorded route, device model, iOS version or test checklist. The screenshots show destination selection rather than active guidance. They do not establish spoken output, rerouting, arrival, background use or full Android parity. No current-location capture was supplied.
 
 ## Tests still to run
 
 [NavigationContractTests.swift](WaypointTests/NavigationContractTests.swift) tests prepared route data against the actual Ferrostar parser. [WaypointUITests.swift](WaypointUITests/WaypointUITests.swift) covers onboarding, world selection, search/saved screens, settings and replay. Both suites are written, but neither has run in the current local toolchain. The GitHub workflow includes them; a workflow definition is not a successful test run.
 
-Device checks are still needed for route guidance, speech interruptions, rerouting, arrival, map gestures, shared-link confirmation, saved-place persistence, locked-screen use and installer refresh. Use synthetic fixtures or fixed public landmarks. Do not publish personal routes, coordinates, device identifiers or unredacted captures.
+Repeatable device checks are still needed for route guidance, speech interruptions, rerouting, arrival, map gestures, shared-link confirmation, saved-place persistence, locked-screen use and installer refresh. Use synthetic fixtures or fixed public landmarks. Do not publish personal routes, coordinates, device identifiers or unredacted captures.
 
 ## Reproducing checks
 
