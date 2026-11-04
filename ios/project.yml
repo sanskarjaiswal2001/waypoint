@@ -67,6 +67,19 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SUPPORTS_MACCATALYST: NO
         GENERATE_INFOPLIST_FILE: NO
+  WaypointTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [WaypointTests]
+    dependencies:
+      - target: Waypoint
+      - package: WaypointKit
+      - package: Ferrostar
+        product: FerrostarCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.waypoint.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
   WaypointUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -86,6 +99,6 @@ schemes:
       config: Debug
     test:
       config: Debug
-      targets: [WaypointUITests]
+      targets: [WaypointTests, WaypointUITests]
     archive:
       config: Release
