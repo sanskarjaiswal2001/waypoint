@@ -10,3 +10,7 @@ resources:
   - Generated/worlds.json
   - Generated/notices.txt
   - Generated/WaypointMark.png
+  - Generated/ui
+  - Generated/fonts
+  - Generated/motion
+  - Generated/font-names.json

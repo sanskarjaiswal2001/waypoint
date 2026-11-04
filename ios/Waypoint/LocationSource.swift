@@ -10,6 +10,7 @@ final class LocationSource: NSObject, LocationProviding, CLLocationManagerDelega
     @Published private(set) var fix: CLLocation?
     @Published private(set) var problem: String?
     @Published private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    @Published private(set) var headingDegrees: Double?
     private let manager = CLLocationManager()
     private var watchdog = LocationUpdateWatchdog()
     private var updating = false
@@ -112,6 +113,8 @@ final class LocationSource: NSObject, LocationProviding, CLLocationManagerDelega
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        headingDegrees = newHeading.headingAccuracy >= 0
+            ? (newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading) : nil
         lastHeading = Heading(clHeading: newHeading)
         if let lastHeading { delegate?.locationManager(self, didUpdateHeading: lastHeading) }
     }

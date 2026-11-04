@@ -19,9 +19,13 @@ struct WorldMap: UIViewRepresentable {
         map.setCenter(CLLocationCoordinate2D(latitude: 51.5, longitude: -0.12), zoomLevel: 10, animated: false)
         map.logoView.isHidden = true
         map.attributionButton.isHidden = true
-        map.compassView.isHidden = false
+        map.compassView.isHidden = true
         let hold = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.dropPin(_:)))
         map.addGestureRecognizer(hold)
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.selectPlace(_:)))
+        tap.require(toFail: hold)
+        tap.delegate = context.coordinator
+        map.addGestureRecognizer(tap)
         let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.panned(_:)))
         pan.delegate = context.coordinator
         map.addGestureRecognizer(pan)
@@ -36,6 +40,7 @@ struct WorldMap: UIViewRepresentable {
         if coordinator.worldID != model.world.id {
             coordinator.worldID = model.world.id
             coordinator.ready = false
+            coordinator.tilted = !model.tilted
             coordinator.watchLoading()
             do { map.styleURL = try model.world.styleURL() }
             catch { coordinator.report("The bundled map style could not load.") }
@@ -46,7 +51,7 @@ struct WorldMap: UIViewRepresentable {
             coordinator.watchLoading()
             map.reloadStyle(nil)
         }
-        map.showsUserLocation = model.fix != nil
+        map.showsUserLocation = false
         if coordinator.ready { coordinator.renderRoute() }
         if coordinator.cameraRequest != model.cameraRequest {
             coordinator.cameraRequest = model.cameraRequest
@@ -54,14 +59,14 @@ struct WorldMap: UIViewRepresentable {
         } else if model.followLocation, let location = model.navigation?.preferredUserLocation?.coordinates.clLocationCoordinate2D ?? model.fix?.coordinate {
             let camera = map.camera
             camera.centerCoordinate = location
-            camera.pitch = model.tilted ? 50 : 0
-            camera.heading = model.navigating ? max(0, model.fix?.course ?? 0) : 0
+            camera.pitch = model.tilted ? (model.navigating ? 50 : model.world.artTilt) : 0
+            camera.heading = model.navigating ? (model.bearing ?? camera.heading) : camera.heading
             map.setCamera(camera, animated: true)
         }
         if coordinator.tilted != model.tilted {
             coordinator.tilted = model.tilted
             let camera = map.camera
-            camera.pitch = model.tilted ? 50 : 0
+            camera.pitch = model.tilted ? model.world.artTilt : 0
             map.setCamera(camera, animated: true)
         }
     }
@@ -111,6 +116,7 @@ struct WorldMap: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+            MapArtwork.install(model.world, in: style)
             for name in ["paper-fibre", "pixel-grass", "pixel-stone", "pixel-water"] {
                 if let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "patterns"),
                    let image = UIImage(contentsOfFile: url.path) { style.setImage(image, forName: name) }
@@ -119,18 +125,39 @@ struct WorldMap: UIViewRepresentable {
             style.addSource(source)
             let casing = MLNLineStyleLayer(identifier: "ios-route-casing", source: source)
             casing.lineColor = NSExpression(forConstantValue: UIColor.black.withAlphaComponent(0.8))
-            casing.lineWidth = NSExpression(forConstantValue: 8)
+            casing.lineWidth = NSExpression(forConstantValue: model.world.routeWidth + 3)
             casing.lineJoin = NSExpression(forConstantValue: "round")
             casing.lineCap = NSExpression(forConstantValue: "round")
             style.addLayer(casing)
             let line = MLNLineStyleLayer(identifier: "ios-route-line", source: source)
             line.lineColor = NSExpression(forConstantValue: model.world.routeColor)
-            line.lineWidth = NSExpression(forConstantValue: 5)
+            line.lineWidth = NSExpression(forConstantValue: model.world.routeWidth)
             line.lineJoin = NSExpression(forConstantValue: "round")
             line.lineCap = NSExpression(forConstantValue: "round")
             style.addLayer(line)
+            for (name, icon, size) in [("ios-destination", "destination-marker", 0.45), ("ios-position", "nav-arrow", 0.32)] {
+                let source = MLNShapeSource(identifier: name, shape: nil, options: nil)
+                style.addSource(source)
+                if name == "ios-position" {
+                    let accuracy = MLNCircleStyleLayer(identifier: "ios-accuracy", source: source)
+                    accuracy.circleColor = NSExpression(forConstantValue: UIColor(hex: "9CCBD8"))
+                    accuracy.circleOpacity = NSExpression(forConstantValue: 0.10)
+                    accuracy.circleStrokeColor = NSExpression(forConstantValue: UIColor(hex: "9CCBD8"))
+                    accuracy.circleStrokeOpacity = NSExpression(forConstantValue: 0.4)
+                    accuracy.circleStrokeWidth = NSExpression(forConstantValue: 1)
+                    style.addLayer(accuracy)
+                }
+                let layer = MLNSymbolStyleLayer(identifier: name, source: source)
+                layer.iconImageName = NSExpression(forConstantValue: icon)
+                layer.iconScale = NSExpression(forConstantValue: size)
+                layer.iconAllowsOverlap = NSExpression(forConstantValue: true)
+                layer.iconIgnoresPlacement = NSExpression(forConstantValue: true)
+                layer.iconRotationAlignment = NSExpression(forConstantValue: "map")
+                style.addLayer(layer)
+            }
             ready = true
             routeKey = nil
+            destinationID = nil
             renderRoute()
         }
 
@@ -154,37 +181,70 @@ struct WorldMap: UIViewRepresentable {
 
         func renderRoute() {
             guard let map, let style = map.style else { return }
-            let key = model.route?.hashValue ?? 0
+            let dotted = (model.world.id == "night_city" && model.mode == .walk) || (model.world.id == "saints" && model.navigating)
+            let line = style.layer(withIdentifier: "ios-route-line") as? MLNLineStyleLayer
+            line?.lineColor = NSExpression(forConstantValue: model.world.id == "saints" && model.navigating ? UIColor(hex: "86D955") : model.world.routeColor)
+            line?.lineDashPattern = NSExpression(forConstantValue: dotted ? [0.3, 1.8] : [1.0, 0.0])
+            var opacity = model.navigation?.isCalculatingNewRoute == true ? 0.45 : 1.0
+            if case .deviation = model.navigation?.currentDeviation { opacity = 0.45 }
+            line?.lineOpacity = NSExpression(forConstantValue: opacity)
+            (style.layer(withIdentifier: "ios-route-casing") as? MLNLineStyleLayer)?.lineOpacity = NSExpression(forConstantValue: dotted ? 0 : opacity)
+            var hasher = Hasher()
+            hasher.combine(model.route)
+            hasher.combine(model.navigation?.tripState)
+            let key = hasher.finalize()
             if routeKey != key {
                 routeKey = key
-                renderedRoute = model.route?.geometry.map(\.clLocationCoordinate2D) ?? []
+                if let state = model.navigation, case let .navigating(index, _, snapped, steps, _, _, _, _, _, _, _) = state.tripState,
+                   let first = steps.first {
+                    let start = Int(min(UInt64(first.geometry.count), index ?? 0))
+                    renderedRoute = [snapped.coordinates.clLocationCoordinate2D]
+                        + first.geometry.dropFirst(start).map(\.clLocationCoordinate2D)
+                        + steps.dropFirst().flatMap { $0.geometry.map(\.clLocationCoordinate2D) }
+                } else { renderedRoute = model.route?.geometry.map(\.clLocationCoordinate2D) ?? [] }
                 let shape: MLNPolylineFeature? = renderedRoute.count > 1
                     ? MLNPolylineFeature(coordinates: &renderedRoute, count: UInt(renderedRoute.count)) : nil
                 (style.source(withIdentifier: "ios-route") as? MLNShapeSource)?.shape = shape
             }
             if destinationID != model.destination?.id {
                 destinationID = model.destination?.id
-                if let annotations = map.annotations { map.removeAnnotations(annotations) }
                 if let place = model.destination {
-                    let pin = MLNPointAnnotation()
-                    pin.coordinate = CLLocationCoordinate2D(latitude: place.coordinate.latitude, longitude: place.coordinate.longitude)
-                    pin.title = place.name
-                    map.addAnnotation(pin)
-                }
+                    let point = MLNPointFeature()
+                    point.coordinate = CLLocationCoordinate2D(latitude: place.coordinate.latitude, longitude: place.coordinate.longitude)
+                    (style.source(withIdentifier: "ios-destination") as? MLNShapeSource)?.shape = point
+                } else { (style.source(withIdentifier: "ios-destination") as? MLNShapeSource)?.shape = nil }
             }
+            if let fix = model.fix {
+                let point = MLNPointFeature()
+                point.coordinate = model.navigation?.preferredUserLocation?.coordinates.clLocationCoordinate2D ?? fix.coordinate
+                (style.source(withIdentifier: "ios-position") as? MLNShapeSource)?.shape = point
+                let metresPerPoint = map.metersPerPoint(atLatitude: fix.coordinate.latitude)
+                let radius = fix.horizontalAccuracy.isFinite && fix.horizontalAccuracy >= 0 && fix.horizontalAccuracy < 5000 && metresPerPoint > 0
+                    ? fix.horizontalAccuracy / metresPerPoint : 0
+                (style.layer(withIdentifier: "ios-accuracy") as? MLNCircleStyleLayer)?.circleRadius = NSExpression(forConstantValue: radius)
+                if let layer = style.layer(withIdentifier: "ios-position") as? MLNSymbolStyleLayer {
+                    let known = model.hasFreshFix && model.bearing != nil
+                    layer.iconImageName = NSExpression(forConstantValue: known ? "nav-arrow" : "position-uncertain")
+                    layer.iconRotation = NSExpression(forConstantValue: known ? (model.bearing ?? 0) : 0)
+                }
+            } else { (style.source(withIdentifier: "ios-position") as? MLNShapeSource)?.shape = nil }
         }
 
         func frameSelection() {
             guard let map else { return }
             if !model.followLocation, let route = model.route, route.geometry.count > 1 {
                 var coordinates = route.geometry.map(\.clLocationCoordinate2D)
+                let landscape = map.bounds.width > map.bounds.height
+                let insets = landscape
+                    ? UIEdgeInsets(top: min(130, map.bounds.height * 0.35), left: 24, bottom: 40, right: min(370, map.bounds.width * 0.46))
+                    : UIEdgeInsets(top: min(150, map.bounds.height * 0.2), left: 30, bottom: min(330, map.bounds.height * 0.45), right: 30)
                 map.setVisibleCoordinates(&coordinates, count: UInt(coordinates.count),
-                                          edgePadding: UIEdgeInsets(top: 150, left: 50, bottom: 330, right: 50), animated: true)
+                                          edgePadding: insets, animated: true)
             } else if !model.followLocation, let place = model.destination {
                 map.setCenter(CLLocationCoordinate2D(latitude: place.coordinate.latitude, longitude: place.coordinate.longitude),
                               zoomLevel: 15, animated: true)
             } else if let fix = model.fix {
-                map.setCenter(fix.coordinate, zoomLevel: model.navigating ? 17 : 15, animated: true)
+                map.setCenter(fix.coordinate, zoomLevel: model.navigating ? 17 : model.world.artZoom, animated: true)
             }
         }
 
@@ -192,8 +252,23 @@ struct WorldMap: UIViewRepresentable {
             guard recognizer.state == .began, !model.navigating, let map else { return }
             let coordinate = map.convert(recognizer.location(in: map), toCoordinateFrom: map)
             guard CLLocationCoordinate2DIsValid(coordinate) else { return }
-            model.select(Place(id: "pin:\(UUID().uuidString)", name: "Dropped pin", address: "Selected on the map",
+            model.select(Place(id: "pin:\(UUID().uuidString)", name: "Dropped pin", address: String(format: "%.5f, %.5f", locale: Locale(identifier: "en_US_POSIX"), coordinate.latitude, coordinate.longitude),
                                coordinate: Coordinate(latitude: coordinate.latitude, longitude: coordinate.longitude)))
+        }
+
+        @objc func selectPlace(_ recognizer: UITapGestureRecognizer) {
+            guard recognizer.state == .ended, !model.navigating, let map else { return }
+            let layers = Set(["essential","utility","discovery","community","support","social","other"].map { "waypoint-\($0)-places" })
+            let features = map.visibleFeatures(at: recognizer.location(in: map), styleLayerIdentifiers: layers)
+            for feature in features {
+                guard let point = feature as? MLNPointFeature else { continue }
+                let raw = feature.attributes["name:en"] as? String ?? feature.attributes["name_en"] as? String ?? feature.attributes["name"] as? String
+                guard let raw else { continue }
+                let name = String(raw.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) }.prefix(120)).trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty, CLLocationCoordinate2DIsValid(point.coordinate) else { continue }
+                model.select(Place(id: "map:\(UUID().uuidString)", name: name, address: "Selected on map", coordinate: Coordinate(latitude: point.coordinate.latitude, longitude: point.coordinate.longitude)))
+                return
+            }
         }
 
         @objc func panned(_ recognizer: UIPanGestureRecognizer) {

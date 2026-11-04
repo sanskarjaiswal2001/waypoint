@@ -22,6 +22,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array><dict><key>CFBundleURLName</key><string>org.waypoint.destination</string><key>CFBundleURLSchemes</key><array><string>geo</string><string>google.navigation</string></array></dict></array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Waypoint uses your location to show your position, preview routes and guide you to a destination.</string>
 	<key>UIApplicationSceneManifest</key>

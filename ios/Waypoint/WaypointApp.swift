@@ -5,7 +5,7 @@ struct WaypointApp: App {
     @State private var model = NavigationModel()
     @Environment(\.scenePhase) private var scenePhase
 
-    init() { BundledGlyphProtocol.install() }
+    init() { SharedArt.install(); BundledGlyphProtocol.install() }
 
     var body: some Scene {
         WindowGroup {

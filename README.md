@@ -144,6 +144,8 @@ The APK is checked against its checksum, package, version and installed signing 
 
 A native iPhone/iPad port is available in this fork under [`ios/`](ios/README.md), with the same 27 map worlds and online routing services. It targets iOS 17 or later and distributes an unsigned IPA for **SideStore or AltStore Classic** through [iOS preview releases](https://github.com/sanskarjaiswal2001/waypoint/releases). See the [iOS guide](ios/README.md) for build instructions, sideloading and validation limits.
 
+The 0.2.0 iOS preview adds the themed phone HUDs, shared artwork and fonts, POI icons, onboarding and remaining phone controls. The promotional screenshots above show Android; [the iOS parity guide](ios/PARITY.md) records what carries over and the platform differences.
+
 ### Android
 
 You need **JDK 17**, Android **SDK Platform 36** and **Build Tools 35.0.0**. Set `ANDROID_HOME` or put your SDK path in the ignored `local.properties` file.

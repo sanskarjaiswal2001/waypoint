@@ -1,24 +1,28 @@
-# Waypoint for iOS 0.1.3 — bundled font transport
+# Waypoint for iOS 0.2.0 — themed phone experience
 
-Native SwiftUI preview for iPhone and iPad running iOS 17 or later.
+The iOS phone UI now follows Android's world-specific atlas designs, replacing the simplified controls from the initial preview.
 
-- Fix bundled map fonts being returned as generic URL responses. MapLibre's HTTPS transport requires HTTP responses; font blocks now return HTTP 200 with their original bytes, content type and length.
-- Bypass the URL cache for map requests so previously cached invalid font responses cannot be reused. Bundled fonts remain local.
-- Replace the generic connection warning with loading-stage messages. A timeout identifies whether the style, renderer or map resources are still pending; actual map-loader errors retain their own descriptions.
-- Include the GPS freshness and recovery changes from 0.1.2.
+- Distinct HUD compositions for all 27 worlds, with the shared typefaces, colours, emblems, illustrations, compass designs and pixel toolbar.
+- Original POI atlas icons, ranked discovery layers, tappable places, custom player/destination markers and an accuracy halo.
+- Per-world camera defaults, persistent 2D/3D preference, walking/racing route treatments and a route line that follows remaining progress.
+- Nearby search, route steps, speed, ETA and distance readouts, persistent spoken-guidance and imperial-unit settings, and confirmed history clearing.
+- Animated introduction with the shared globe/icons and horse/phone artwork, multiple favourite games, world carousel, optional location setup and replay from Settings.
+- Confirmed `geo:` and `google.navigation:` destinations, including links pasted into search. Existing guidance cannot be replaced by an import.
+- Contextual GitHub feedback drafts, iOS release checks and idle-map update notices.
+- Preserve the bundled-font HTTP transport fix and GPS freshness/recovery from 0.1.3.
 
-## Installation
+## Install or update
 
-Download **Waypoint-iOS-unsigned.ipa** and update through your existing LiveContainer, SideStore or AltStore Classic setup. Keep the same app identity/container to preserve saved places. **SHA256SUMS-iOS** contains the download checksum.
+Download **Waypoint-iOS-unsigned.ipa** and import it through the same LiveContainer container, SideStore or AltStore Classic installation. Keep the existing app identity/container to preserve saved places and settings. **SHA256SUMS-iOS** contains the download checksum. Requires iOS 17 or later.
 
-Reopen Waypoint and allow the map to load before tapping **Locate**. If it remains blank after 25 seconds, note the exact loading-stage message. For LiveContainer, enable location access and **Precise Location** for the instance hosting Waypoint.
+The new themed map UI appears immediately. To see the new introduction on an existing installation, open **Settings → Replay introduction**.
 
-See [the installation and build guide](https://github.com/sanskarjaiswal2001/waypoint/blob/ios-v0.1.3/ios/README.md) for details.
+## Validation
 
-## Build validation
+The unsigned arm64 device IPA was built with xtool 1.24.0 and Swift Build using the user-folder iOS SDK. All 26 core XCTest tests pass, including font transport, GPS recovery, destination imports and release selection. All staged iOS styles pass the official style validator. Package checks cover all worlds, their POI atlases, UI fonts, artwork, motion resources, frameworks, version metadata and ZIP integrity. All 27 HUDs received a local macOS SwiftUI layout review using synthetic display state; these previews do not establish iPhone rendering or real-road behaviour. Simulator UI tests are updated but have not been run. Device verification of the new phone UI and background navigation remains necessary.
 
-The unsigned arm64 IPA was compiled locally with xtool 1.24.0 and Swift Build using the user-folder iOS SDK. Package checks cover device Mach-O metadata, required frameworks, bundled map resources and ZIP integrity. All 20 core XCTest tests passed. The new font transport regression failed with the original generic response and passed with the HTTP response. Simulator UI tests have not been run. Map rendering and GPS recovery still require device verification, including LiveContainer hosting and background guidance.
+## Platform scope
 
-## Preview limits
+This is an experimental phone port. Android Auto, CarPlay, APK self-installation, Android GNSS satellite counts, a share extension and the default-navigation entitlement are outside this unsigned IPA. iOS supplies native sheets, permission dialogs, speech and lifecycle handling. Updates are installed through your existing installer. Maps, search and routing require online services; there is no traffic, offline routing or lane guidance.
 
-This is an experimental iOS port. Background guidance and real-road behaviour still need validation. Online map/search/routing services are required. Traffic, offline routing, lane guidance, CarPlay, incoming destination links, the Android updater, onboarding videos and per-game Android HUD layouts are not included. This release is separate from the upstream Android stable releases.
+See [phone parity and platform differences](https://github.com/sanskarjaiswal2001/waypoint/blob/ios-v0.2.0/ios/PARITY.md) and [the installation guide](https://github.com/sanskarjaiswal2001/waypoint/blob/ios-v0.2.0/ios/README.md).

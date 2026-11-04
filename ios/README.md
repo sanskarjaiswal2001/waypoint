@@ -2,7 +2,9 @@
 
 A native SwiftUI port for iPhone and iPad on **iOS 17 or later**. It shares the Android app's 27 MapLibre styles, bundled map fonts, map patterns and online providers. Ferrostar 0.59.0 handles route progress, spoken instructions, arrival and rerouting.
 
-This is an experimental preview. Device installation, background guidance, GPS reliability and real-road behaviour need validation before treating it as a daily navigation app. CarPlay, Android's in-app updater and incoming destination links are not part of this initial port. The iOS screens use native controls; the Android onboarding animations and individual game HUD layouts have not been ported.
+From 0.2.0, the phone interface follows Android's 27 world-specific atlas layouts, including the shared UI fonts, emblems, illustrations, POI atlases, custom markers, compass, route controls and onboarding artwork. It also includes nearby searches, route steps, persistent voice/units/tilt preferences, multiple favourite worlds, confirmed destination imports, feedback drafts and iOS release checks. See [phone parity and platform differences](PARITY.md).
+
+This is an experimental preview. Background guidance, GPS reliability, the new phone layouts and real-road behaviour still need device validation. CarPlay, Android's APK self-installer and satellite counts are outside this phone port. iOS supplies native permission dialogs, speech, keyboard and sheets. The GitHub README's promotional screenshots show Android.
 
 ## Install through SideStore or AltStore Classic
 
@@ -11,6 +13,10 @@ This is an experimental preview. Device installation, background guidance, GPS r
 3. In SideStore or AltStore Classic, open **My Apps**, tap **+**, and choose the downloaded IPA. The installer signs it with your account and installs it.
 4. Open Waypoint, choose a world and tap **Open map**. Tap **Locate**, allow location access with **Precise Location** enabled, then search for a destination or hold the map to drop a pin.
 5. Choose Car, Motorcycle or Walk, tap **Preview route**, and review it before starting navigation.
+
+An existing installation opens directly into the new themed HUD. Use **Settings → Replay introduction** to see the expanded onboarding. Each world arranges Search, Worlds, Saved, Settings, Locate and map tilt differently. The introduction supports multiple favourite games and keeps those preferences on the device.
+
+To open a shared `geo:` or `google.navigation:` destination, paste it into **Search places** and tap **Open shared destination**. Review the confirmation before allowing a lookup or route preview. Direct external dispatch depends on your installer/LiveContainer host. An import never replaces active guidance. Updates appear as release links; install the newer IPA through your existing installer.
 
 The IPA is deliberately unsigned and cannot be installed by tapping it directly in Files. It contains one arm64 device app, no app extensions and no restricted CarPlay entitlement. SideStore/AltStore handles signing and refresh. Free-account signatures normally need refreshing within seven days; follow the installer's current guidance and account limits. AltStore PAL is a different distribution system and is not the IPA-import route described here.
 
@@ -85,9 +91,10 @@ Before tagging, update `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `ios
 - Car routes: OSRM. Motorcycle and walking routes: Valhalla using their distinct costing profiles.
 - Guidance: Ferrostar on-device, with iOS text-to-speech and Core Location.
 - Saved places, recent destinations and selected world: local app preferences. No account or analytics service.
+- City label: Core Location reverse geocoding. Release checks: the fork's public GitHub releases, without location data.
 
 Location is requested only after **Locate** or an explicit route preview. Background location is enabled only while navigating. Ending a trip releases background location and the screen-awake state. The map can be browsed without granting location. Search needs no GPS fix, while route preview and navigation require a recent position with adequate accuracy. Online providers can be unavailable or rate-limited. There is no offline routing, live traffic or lane guidance.
 
-Core tests cover provider selection, coordinate order, malformed responses, bounded geometry and upcoming-turn prompts. A compiled IPA does not establish real-road safety or installation compatibility. Before expanding the release beyond a preview, validate on a physical device: SideStore/AltStore installation and refresh, permission denial/revocation, reduced accuracy, background/locked-screen voice, arrival, wrong-turn rerouting, lost connectivity, and saved-place persistence across updates.
+Core tests cover provider selection, coordinate order, malformed responses, bounded geometry, upcoming-turn prompts, font transport, GPS recovery, destination imports and release selection. A compiled IPA does not establish real-road safety or installation compatibility. Before expanding the release beyond a preview, validate on a physical device: the themed layouts and map gestures, installation and refresh, permission denial/revocation, reduced accuracy, background/locked-screen voice, arrival, wrong-turn rerouting, lost connectivity, and saved-place persistence across updates.
 
 Code is MIT licensed. Bundled font and style notices are staged into the app's **Settings → Licences and map attribution** screen. See the repository's [font notices](../docs/licenses/) and [privacy guide](../docs/guide.md#location-and-privacy).

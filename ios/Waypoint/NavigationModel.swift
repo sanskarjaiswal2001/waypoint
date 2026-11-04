@@ -27,7 +27,7 @@ struct RoutingProvider: CustomRouteProvider {
 @MainActor @Observable
 final class NavigationModel: NSObject {
     var world: World {
-        didSet { UserDefaults.standard.set(world.id, forKey: "world") }
+        didSet { UserDefaults.standard.set(world.id, forKey: "world"); cameraRequest = UUID() }
     }
     var saved: [Place] {
         didSet { persist(saved, key: "saved") }
@@ -47,10 +47,36 @@ final class NavigationModel: NSObject {
     var gpsStale = false
     var cameraRequest = UUID()
     var followLocation = true
-    var tilted = false
+    private var tiltOverride = UserDefaults.standard.object(forKey: "tilted") as? Bool
+    var tilted: Bool {
+        get { tiltOverride ?? world.defaultTilted }
+        set { tiltOverride = newValue; UserDefaults.standard.set(newValue, forKey: "tilted"); cameraRequest = UUID() }
+    }
     var muted = false
     var mapError: String?
     var mapReloadRequest = UUID()
+    var city = "Map preview"
+    var pendingImport: NavigationImport?
+    var availableUpdate: IOSRelease?
+    var updateStatus: String?
+    var checkingUpdates = false
+    @ObservationIgnored private var lastUpdateCheck: Date?
+    var headingDegrees: Double?
+    var imperial = UserDefaults.standard.bool(forKey: "imperial") {
+        didSet { UserDefaults.standard.set(imperial, forKey: "imperial") }
+    }
+    var voiceEnabled = UserDefaults.standard.object(forKey: "voice") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(voiceEnabled, forKey: "voice")
+            if navigating && muted == voiceEnabled { core?.spokenInstructionObserver.toggleMute(); muted = !voiceEnabled }
+        }
+    }
+    var favoriteWorlds = UserDefaults.standard.stringArray(forKey: "favoriteWorlds") ?? ["los_santos"] {
+        didSet { UserDefaults.standard.set(favoriteWorlds, forKey: "favoriteWorlds") }
+    }
+    @ObservationIgnored private let geocoder = CLGeocoder()
+    @ObservationIgnored private var geocodedLocation: CLLocation?
+    @ObservationIgnored private var geocoding = false
     var showWelcome = !UserDefaults.standard.bool(forKey: "onboarded")
 
     @ObservationIgnored let location = LocationSource()
@@ -72,12 +98,22 @@ final class NavigationModel: NSObject {
         recent = Self.restore("recent")
         super.init()
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") { showWelcome = true }
+        if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") {
+            showWelcome = true
+            favoriteWorlds = ["los_santos"]
+            imperial = false
+            voiceEnabled = true
+            tiltOverride = nil
+            defaults.removeObject(forKey: "tilted")
+        }
         #endif
         location.$fix.receive(on: DispatchQueue.main).sink { [weak self] in
+            if self?.fix == nil && $0 != nil { self?.cameraRequest = UUID() }
             self?.fix = $0
             self?.gpsStale = $0.map { !LocationUpdateWatchdog.isFresh($0.timestamp) } ?? false
+            if let fix = $0 { self?.updateCity(fix) }
         }.store(in: &subscriptions)
+        location.$headingDegrees.receive(on: DispatchQueue.main).sink { [weak self] in self?.headingDegrees = $0 }.store(in: &subscriptions)
         location.$problem.receive(on: DispatchQueue.main).sink { [weak self] problem in
             guard let self else { return }
             self.locationProblem = problem
@@ -96,10 +132,45 @@ final class NavigationModel: NSObject {
         return LocationUpdateWatchdog.isFresh(fix.timestamp) && (0...65).contains(fix.horizontalAccuracy) && locationProblem == nil
     }
 
+    var bearing: Double? {
+        if let fix, hasFreshFix, fix.speed > 0.8, fix.course >= 0, fix.courseAccuracy >= 0, fix.courseAccuracy <= 45 { return fix.course }
+        return headingDegrees
+    }
+    var fixLabel: String {
+        if let fix, hasFreshFix { return "GPS ±\(Int(fix.horizontalAccuracy.rounded())) m · \(mode.title)" }
+        return fix == nil ? "Map preview · \(mode.title)" : "Finding GPS · \(mode.title)"
+    }
+    var speedText: String {
+        guard hasFreshFix, let fix, fix.speed >= 0 else { return "—" }
+        return "\(Int((fix.speed * (imperial ? 2.23694 : 3.6)).rounded()))"
+    }
+    func distanceText(_ metres: Double) -> String {
+        if imperial { return metres < 1609.344 ? "\(Int((metres * 3.28084).rounded())) ft" : String(format: "%.1f mi", metres / 1609.344) }
+        return metres < 1000 ? "\(Int(metres.rounded())) m" : String(format: "%.1f km", metres / 1000)
+    }
+    func clearPlaces() { saved = []; recent = [] }
+    func toggleFavorite(_ world: World) {
+        if favoriteWorlds.contains(world.id) { favoriteWorlds.removeAll { $0 == world.id } }
+        else { favoriteWorlds.append(world.id) }
+    }
+    private func updateCity(_ fix: CLLocation) {
+        guard hasFreshFix, !geocoding, geocodedLocation.map({ fix.distance(from: $0) > 1000 && fix.timestamp.timeIntervalSince($0.timestamp) > 30 }) ?? true else { return }
+        geocoding = true
+        geocodedLocation = fix
+        city = city == "Map preview" ? "Current location" : city
+        geocoder.reverseGeocodeLocation(fix) { [weak self] places, _ in
+            Task { @MainActor in
+                self?.geocoding = false
+                if let place = places?.first { self?.city = place.locality ?? place.subAdministrativeArea ?? place.administrativeArea ?? "Current location" }
+            }
+        }
+    }
+
     var duration: Double { navigation?.currentProgress?.durationRemaining ?? route?.steps.reduce(0) { $0 + $1.duration } ?? 0 }
     var distance: Double { navigation?.currentProgress?.distanceRemaining ?? route?.distance ?? 0 }
     var instruction: String {
         if navigation?.isCalculatingNewRoute == true { return "Finding a new route…" }
+        if case .deviation = navigation?.currentDeviation { return "Checking your position for a new route" }
         return navigation?.currentVisualInstruction?.primaryContent.text
             ?? navigation?.currentStep?.instruction ?? "Follow the route"
     }
@@ -118,6 +189,32 @@ final class NavigationModel: NSObject {
     func retryMap() {
         mapError = nil
         mapReloadRequest = UUID()
+    }
+
+    func offerImport(_ value: String) {
+        guard !navigating else { message = "End the current trip before opening another destination."; return }
+        guard let proposal = NavigationImport.parse(value) else { message = "This destination link is invalid or unsupported."; return }
+        pendingImport = proposal
+    }
+
+    func checkForUpdate(quiet: Bool = false) async {
+        guard !checkingUpdates, !navigating else { return }
+        if quiet && lastUpdateCheck.map({ Date().timeIntervalSince($0) < 86_400 }) == true { return }
+        checkingUpdates = true
+        defer { checkingUpdates = false }
+        do {
+            var request = URLRequest(url: URL(string: "https://api.github.com/repos/sanskarjaiswal2001/waypoint/releases?per_page=50")!, timeoutInterval: 20)
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            request.setValue("Waypoint-iOS", forHTTPHeaderField: "User-Agent")
+            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+            guard let response = response as? HTTPURLResponse, response.statusCode == 200, response.expectedContentLength <= 2_000_000 else { throw ServiceError.invalidResponse }
+            var data = Data()
+            for try await byte in bytes { guard data.count < 2_000_000 else { throw ServiceError.tooLarge }; data.append(byte) }
+            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0"
+            availableUpdate = try IOSRelease.newerRelease(in: data, currentVersion: version)
+            lastUpdateCheck = Date()
+            updateStatus = availableUpdate.map { "Version \($0.version) is available." } ?? "You're using the latest iOS preview."
+        } catch { if !quiet { updateStatus = "The update check failed. Try again later or open iOS releases." } }
     }
 
     func select(_ place: Place) {
@@ -204,6 +301,8 @@ final class NavigationModel: NSObject {
         do {
             location.navigating = true
             navigating = true
+            if core.spokenInstructionObserver.isMuted == voiceEnabled { core.spokenInstructionObserver.toggleMute() }
+            muted = core.spokenInstructionObserver.isMuted
             try core.startNavigation(route: route)
             followLocation = true
             cameraRequest = UUID()
@@ -243,8 +342,7 @@ final class NavigationModel: NSObject {
     }
 
     func toggleMute() {
-        core?.spokenInstructionObserver.toggleMute()
-        muted = core?.spokenInstructionObserver.isMuted ?? false
+        voiceEnabled.toggle()
     }
 
     func sceneChanged(_ phase: ScenePhase) {

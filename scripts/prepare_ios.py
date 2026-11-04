@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+from ios_cartography import add_discovery_layers
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +33,23 @@ if len(worlds) != 27 or len({world["id"] for world in worlds}) != len(worlds):
 for world in worlds:
     if not (DEST / "styles" / (world["id"] + ".json")).is_file():
         raise SystemExit("Missing style for " + world["id"])
+    style_path = DEST / "styles" / (world["id"] + ".json")
+    style = json.loads(style_path.read_text())
+    add_discovery_layers(style, world["id"])
+    style_path.write_text(json.dumps(style, separators=(",", ":")))
 (DEST / "worlds.json").write_text(json.dumps(worlds, indent=2) + "\n")
+
+for directory, origin in (("fonts", ROOT / "app/src/main/res/font"), ("motion", ROOT / "app/src/main/res/raw")):
+    target = DEST / directory
+    if target.exists():
+        shutil.rmtree(target)
+    if directory == "motion":
+        target.mkdir()
+        for name in ("onboarding_globe_motion.mp4", "onboarding_icons_motion.mp4"):
+            shutil.copyfile(origin / name, target / name)
+    else:
+        shutil.copytree(origin, target)
+subprocess.run(["swift", str(ROOT / "scripts/prepare_ios_art.swift"), str(ROOT)], check=True)
 
 patterns = DEST / "patterns"
 patterns.mkdir(exist_ok=True)

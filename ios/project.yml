@@ -18,8 +18,8 @@ settings:
     SWIFT_VERSION: '5.0'
     TARGETED_DEVICE_FAMILY: '1,2'
     PRODUCT_BUNDLE_IDENTIFIER: org.waypoint.ios
-    MARKETING_VERSION: 0.1.3
-    CURRENT_PROJECT_VERSION: 4
+    MARKETING_VERSION: 0.2.0
+    CURRENT_PROJECT_VERSION: 5
     CODE_SIGNING_ALLOWED: NO
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 targets:
@@ -36,6 +36,17 @@ targets:
         buildPhase: resources
       - path: Generated/styles
         type: folder
+        buildPhase: resources
+      - path: Generated/ui
+        type: folder
+        buildPhase: resources
+      - path: Generated/fonts
+        type: folder
+        buildPhase: resources
+      - path: Generated/motion
+        type: folder
+        buildPhase: resources
+      - path: Generated/font-names.json
         buildPhase: resources
       - path: Generated/glyphs
         type: folder
@@ -56,6 +67,9 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSRequiresIPhoneOS: true
+        CFBundleURLTypes:
+          - CFBundleURLName: org.waypoint.destination
+            CFBundleURLSchemes: [geo, google.navigation]
         NSLocationWhenInUseUsageDescription: Waypoint uses your location to show your position, preview routes and guide you to a destination.
         UIBackgroundModes: [location, audio]
         UIApplicationSceneManifest:
