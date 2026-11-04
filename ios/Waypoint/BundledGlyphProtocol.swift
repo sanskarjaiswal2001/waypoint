@@ -3,7 +3,7 @@ import MapLibre
 
 /// Serve the shared font blocks locally, falling back to the provider for other scripts.
 final class BundledGlyphProtocol: URLProtocol {
-    private var task: URLSessionDataTask?
+    private var downloadTask: URLSessionDataTask?
 
     static func install() {
         let configuration = URLSessionConfiguration.default
@@ -32,15 +32,15 @@ final class BundledGlyphProtocol: URLProtocol {
             return
         }
         let fallback = URL(string: "https://tiles.openfreemap.org/fonts/Noto%20Sans%20Regular/" + parts[3])!
-        task = URLSession.shared.dataTask(with: fallback) { [weak self] data, response, error in
+        downloadTask = URLSession.shared.dataTask(with: fallback) { [weak self] data, response, error in
             guard let self else { return }
             if let error { self.client?.urlProtocol(self, didFailWithError: error); return }
             if let response { self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .allowed) }
             if let data { self.client?.urlProtocol(self, didLoad: data) }
             self.client?.urlProtocolDidFinishLoading(self)
         }
-        task?.resume()
+        downloadTask?.resume()
     }
 
-    override func stopLoading() { task?.cancel() }
+    override func stopLoading() { downloadTask?.cancel() }
 }

@@ -269,16 +269,21 @@ final class NavigationModel: NSObject {
 }
 
 extension NavigationModel: FerrostarCoreDelegate {
-    func core(_ core: FerrostarCore, didStartWith route: Route) {}
+    nonisolated func core(_ core: FerrostarCore, didStartWith route: Route) {}
 
-    func core(_ core: FerrostarCore, correctiveActionForDeviation deviation: DeviationKind,
+    nonisolated func core(_ core: FerrostarCore, correctiveActionForDeviation deviation: DeviationKind,
               remainingWaypoints waypoints: [Waypoint]) -> CorrectiveAction {
-        navigating && hasFreshFix ? .getNewRoutes(waypoints: waypoints) : .doNothing
+        // Ferrostar 0.59 invokes synchronous deviation decisions on the main queue.
+        MainActor.assumeIsolated {
+            self.core === core && navigating && hasFreshFix ? .getNewRoutes(waypoints: waypoints) : .doNothing
+        }
     }
 
-    func core(_ core: FerrostarCore, loadedAlternateRoutes routes: [Route]) {
-        guard navigating, let route = routes.first else { return }
-        do { try core.startNavigation(route: route) }
-        catch { message = "Could not start the recalculated route. Stop and preview again when safe." }
+    nonisolated func core(_ core: FerrostarCore, loadedAlternateRoutes routes: [Route]) {
+        Task { @MainActor [weak self] in
+            guard let self, self.core === core, self.navigating, let route = routes.first else { return }
+            do { try core.startNavigation(route: route) }
+            catch { self.message = "Could not start the recalculated route. Stop and preview again when safe." }
+        }
     }
 }
