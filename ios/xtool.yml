@@ -1,0 +1,12 @@
+version: 1
+skipLSP: true
+bundleID: org.waypoint.ios
+infoPath: Generated/Info-xtool.plist
+iconPath: Generated/Assets.xcassets/AppIcon.appiconset/icon.png
+resources:
+  - Generated/styles
+  - Generated/glyphs
+  - Generated/patterns
+  - Generated/worlds.json
+  - Generated/notices.txt
+  - Generated/WaypointMark.png

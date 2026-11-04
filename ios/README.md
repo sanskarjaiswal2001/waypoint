@@ -22,6 +22,28 @@ shasum -a 256 -c SHA256SUMS-iOS
 
 ## Build
 
+### SwiftPM and xtool
+
+An unsigned IPA can also be built with [xtool](https://github.com/xtool-org/xtool), using the existing Command Line Tools as the host toolchain and the iOS platform files from a user-folder Xcode installation. This path was tested with xtool 1.24.0, Swift 6.4 Command Line Tools and Xcode 27.2 in `~/Applications`, without administrator access.
+
+Install xtool from its official release or Homebrew tap, and ensure your Xcode app contains the iOS SDK. Then run:
+
+```sh
+bash scripts/build_ios_xtool.sh
+```
+
+If xtool is not on your `PATH`, or Xcode is in another location:
+
+```sh
+WAYPOINT_XTOOL="/path/to/xtool.app/Contents/MacOS/xtool" \
+WAYPOINT_XCODE_APP="$HOME/Applications/Xcode.app" \
+bash scripts/build_ios_xtool.sh
+```
+
+The script uses Swift Build through xtool, stages iOS platform links under the ignored `ios/build/` directory, and packages `ios/build/release/Waypoint-iOS-unsigned.ipa`. Signing and Apple-account login are handled later by SideStore or AltStore. Toolchain and platform compatibility can vary with installed versions.
+
+### Xcode build
+
 Install **Xcode 26 or later**, its iOS SDK and command-line tools, and [XcodeGen](https://github.com/yonaskolb/XcodeGen). Select the full Xcode installation in `xcode-select`.
 
 ```sh
@@ -30,7 +52,7 @@ swift test --package-path ios/WaypointKit
 bash scripts/build_ios.sh
 ```
 
-The output is `ios/build/release/Waypoint-iOS-unsigned.ipa`. The packaging script verifies that it contains an arm64 iPhoneOS app, strips embedded signature resources and provisioning profiles, checks ZIP integrity and writes its SHA-256 checksum. Apple credentials are not required to compile this unsigned build.
+The output is `ios/build/release/Waypoint-iOS-unsigned.ipa`. The packaging script verifies its arm64 architecture and iOS device Mach-O platform, strips embedded signature resources and provisioning profiles, checks ZIP integrity and writes its SHA-256 checksum. Apple credentials are not required to compile this unsigned build.
 
 For development in Xcode:
 

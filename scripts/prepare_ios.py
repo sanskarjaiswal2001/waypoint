@@ -2,6 +2,7 @@
 """Stage shared Android cartography and licence notices for the native iOS target."""
 
 import json
+import plistlib
 from pathlib import Path
 import re
 import shutil
@@ -42,6 +43,7 @@ catalog = DEST / "Assets.xcassets"
 catalog.mkdir(exist_ok=True)
 (catalog / "Contents.json").write_text(json.dumps({"info": {"version": 1, "author": "xcode"}}))
 icon = ROOT / "docs/images/waypoint-icon.png"
+shutil.copyfile(icon, DEST / "WaypointMark.png")
 for name, metadata in (
     ("WaypointMark.imageset", {"images": [{"filename": "icon.png", "idiom": "universal"}]}),
     ("AppIcon.appiconset", {"images": [{"filename": "icon.png", "idiom": "universal", "platform": "ios", "size": "1024x1024"}]})
@@ -64,4 +66,19 @@ for path in sorted((ROOT / "docs/licenses").iterdir()) + sorted((ROOT / "ios/Thi
     if path.is_file():
         notices.append(path.name + "\n\n" + path.read_text())
 (DEST / "notices.txt").write_text("\n\n---\n\n".join(notices))
+
+project = (ROOT / "ios/project.yml").read_text()
+version = re.search(r"MARKETING_VERSION:\s*([0-9.]+)", project).group(1)
+build = re.search(r"CURRENT_PROJECT_VERSION:\s*([0-9]+)", project).group(1)
+with (ROOT / "ios/Waypoint/Info.plist").open("rb") as stream:
+    info = plistlib.load(stream)
+info.update({
+    "CFBundleDevelopmentRegion": "en", "CFBundleExecutable": "Waypoint",
+    "CFBundleIdentifier": "org.waypoint.ios", "CFBundleName": "Waypoint",
+    "CFBundleShortVersionString": version, "CFBundleVersion": build,
+    "CFBundleSupportedPlatforms": ["iPhoneOS"], "MinimumOSVersion": "17.0",
+    "UIDeviceFamily": [1, 2],
+})
+with (DEST / "Info-xtool.plist").open("wb") as stream:
+    plistlib.dump(info, stream)
 print(f"Staged {len(worlds)} worlds, bundled glyphs, patterns and notices in ios/Generated")

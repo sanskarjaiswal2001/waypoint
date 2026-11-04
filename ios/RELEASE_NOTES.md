@@ -1,4 +1,4 @@
-# Waypoint for iOS — first preview
+# Waypoint for iOS 0.1.1 — first IPA preview
 
 Native SwiftUI app for iPhone and iPad running iOS 17 or later.
 
@@ -12,7 +12,11 @@ Native SwiftUI app for iPhone and iPad running iOS 17 or later.
 
 Download **Waypoint-iOS-unsigned.ipa**, then import it with **SideStore** or **AltStore Classic** using **My Apps → +**. Your installer signs the app with your own account. This unsigned file cannot be installed directly from Files. Keep the app refreshed according to your installer's instructions. **SHA256SUMS-iOS** contains the download checksum.
 
-See [the installation and build guide](https://github.com/sanskarjaiswal2001/waypoint/blob/ios-v0.1.0/ios/README.md) for details.
+See [the installation and build guide](https://github.com/sanskarjaiswal2001/waypoint/blob/ios-v0.1.1/ios/README.md) for details.
+
+## Build validation
+
+The published unsigned arm64 IPA was compiled locally with xtool 1.24.0 and Swift Build, using the user-folder iOS SDK. The package was checked for iOS device Mach-O metadata, required frameworks and map resources, and ZIP integrity. All 11 XCTest routing adapter tests passed, along with live public-landmark search/car/motorcycle/walking route checks. Simulator UI tests have not been run for this build.
 
 ## Preview limits
 

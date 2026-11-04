@@ -46,4 +46,8 @@ docs/images/captures/
 **/DerivedData/
 ios/Generated/
 ios/Waypoint.xcodeproj/
+ios/xtool/
+ios/.sourcekit-lsp/
+ios/.bsp/
+ios/buildServer.json
 **/xcuserdata/

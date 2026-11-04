@@ -26,7 +26,7 @@ final class WaypointUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Your places"].waitForExistence(timeout: 5))
         app.buttons["Done"].tap()
         app.buttons["Settings"].tap()
-        XCTAssertTrue(app.staticTexts["0.1.0"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["0.1.1"].waitForExistence(timeout: 5))
         app.buttons["Done"].tap()
         let map = XCTAttachment(screenshot: app.screenshot())
         map.name = "Old West map"

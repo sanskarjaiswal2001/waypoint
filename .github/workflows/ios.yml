@@ -98,5 +98,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; keeping the published assets."
+            exit 0
+          fi
           gh release create "$RELEASE_TAG" release/Waypoint-iOS-unsigned.ipa release/SHA256SUMS-iOS \
             --verify-tag --title "Waypoint iOS $RELEASE_TAG" --notes-file ios/RELEASE_NOTES.md --prerelease --latest=false

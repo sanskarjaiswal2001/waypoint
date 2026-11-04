@@ -4,6 +4,7 @@
 import hashlib
 from pathlib import Path
 import plistlib
+import re
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,9 @@ binary = app / info["CFBundleExecutable"]
 architectures = subprocess.check_output(["lipo", "-archs", str(binary)], text=True).strip().split()
 if architectures != ["arm64"]:
     raise SystemExit("Expected an arm64 device executable")
+build_metadata = subprocess.check_output(["vtool", "-show-build", str(binary)], text=True)
+if re.findall(r"platform\s+(\S+)", build_metadata) != ["IOS"]:
+    raise SystemExit("Expected a Mach-O executable built for iOS devices")
 if any(app.rglob("*.appex")):
     raise SystemExit("Unexpected app extensions in the sideload build")
 destination.mkdir(parents=True, exist_ok=True)
