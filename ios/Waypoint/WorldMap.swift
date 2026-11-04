@@ -84,13 +84,22 @@ struct WorldMap: UIViewRepresentable {
         private var routeKey: Int?
         private var destinationID: String?
         private var loadingTimeout: DispatchWorkItem?
+        private var renderedFrame = false
 
         init(model: NavigationModel) { self.model = model }
 
         func watchLoading() {
             cancelLoadingWatch()
+            renderedFrame = false
             let timeout = DispatchWorkItem { [weak self] in
-                self?.report("Map tiles have not finished loading. Check your connection or retry the map.")
+                guard let self else { return }
+                if !self.ready {
+                    self.report("The map style has not finished loading. Retry the map.")
+                } else if !self.renderedFrame {
+                    self.report("The map style loaded, but rendering has not started. Retry the map.")
+                } else {
+                    self.report("The map style loaded, but some map resources are still pending. Retry the map.")
+                }
             }
             loadingTimeout = timeout
             DispatchQueue.main.asyncAfter(deadline: .now() + 25, execute: timeout)
@@ -132,7 +141,11 @@ struct WorldMap: UIViewRepresentable {
 
         func mapViewDidFailLoadingMap(_ mapView: MLNMapView, withError error: Error) {
             cancelLoadingWatch()
-            report("Map could not load. Check your internet connection.")
+            report(error.localizedDescription)
+        }
+
+        func mapViewDidFinishRenderingFrame(_ mapView: MLNMapView, fullyRendered: Bool) {
+            renderedFrame = true
         }
 
         func report(_ message: String) {

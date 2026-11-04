@@ -1,5 +1,6 @@
 import Foundation
 import MapLibre
+import WaypointKit
 
 /// Serve the shared font blocks locally, falling back to the provider for other scripts.
 final class BundledGlyphProtocol: URLProtocol {
@@ -7,15 +8,15 @@ final class BundledGlyphProtocol: URLProtocol {
 
     static func install() {
         let configuration = URLSessionConfiguration.default
+        configuration.urlCache = nil
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.timeoutIntervalForResource = 30
         configuration.protocolClasses = [BundledGlyphProtocol.self] + (configuration.protocolClasses ?? [])
         MLNNetworkConfiguration.sharedManager.sessionConfiguration = configuration
     }
 
     override class func canInit(with request: URLRequest) -> Bool {
-        guard let url = request.url, url.host == "tiles.openfreemap.org" else { return false }
-        let parts = url.pathComponents
-        return parts.count == 4 && parts[1] == "fonts" && parts[2].hasPrefix("Waypoint ")
-            && parts[3].range(of: #"^\d+-\d+\.pbf$"#, options: .regularExpression) != nil
+        request.url.map(BundledGlyphStore.handles) ?? false
     }
 
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -23,11 +24,9 @@ final class BundledGlyphProtocol: URLProtocol {
     override func startLoading() {
         guard let url = request.url else { return }
         let parts = url.pathComponents
-        if let resource = Bundle.main.url(forResource: parts[3], withExtension: nil, subdirectory: "glyphs/" + parts[2]),
-           let data = try? Data(contentsOf: resource) {
-            let response = URLResponse(url: url, mimeType: "application/x-protobuf", expectedContentLength: data.count, textEncodingName: nil)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .allowed)
-            client?.urlProtocol(self, didLoad: data)
+        if let resource = BundledGlyphStore().load(url) {
+            client?.urlProtocol(self, didReceive: resource.response, cacheStoragePolicy: .allowed)
+            client?.urlProtocol(self, didLoad: resource.data)
             client?.urlProtocolDidFinishLoading(self)
             return
         }

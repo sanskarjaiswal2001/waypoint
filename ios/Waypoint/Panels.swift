@@ -137,7 +137,7 @@ struct SettingsView: View {
             List {
                 Section("Waypoint for iOS") {
                     Text("Real streets. Another world.").font(.headline)
-                    LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.2")
+                    LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.3")
                     Text("An experimental native iOS port. Internet access is required for maps, search and routes. No live traffic, offline routing or lane guidance.").font(.footnote)
                 }
                 Section("Location and privacy") {
@@ -147,7 +147,7 @@ struct SettingsView: View {
                 }.font(.footnote)
                 Section("Sideloading") {
                     Text("Install the unsigned IPA through SideStore or AltStore. Your signing app handles signing, device registration and refresh. Keep the same app identity when updating to preserve saved places.").font(.footnote)
-                    Link("iOS build and installation guide", destination: URL(string: "https://github.com/sanskarjaiswal2001/waypoint/blob/ios-v0.1.2/ios/README.md")!)
+                    Link("iOS build and installation guide", destination: URL(string: "https://github.com/sanskarjaiswal2001/waypoint/blob/ios-v0.1.3/ios/README.md")!)
                 }
                 Section("Open source") {
                     Link("Waypoint source", destination: URL(string: "https://github.com/the-geeky-couldron/waypoint")!)
