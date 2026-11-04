@@ -10,6 +10,8 @@ struct ContentView: View {
     @Bindable var model: NavigationModel
     @State private var panel: Panel?
     @State private var searchQuery = ""
+    @State private var replayIntroPending = false
+    @State private var showImportConfirmation = false
 
     var body: some View {
         ZStack {
@@ -32,20 +34,28 @@ struct ContentView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { attribution }
         .tint(model.world.theme.accent)
-        .sheet(item: $panel) { panel in
+        .sheet(item: $panel, onDismiss: {
+            if replayIntroPending { replayIntroPending = false; model.showWelcome = true }
+            else if model.pendingImport != nil && !model.showWelcome { showImportConfirmation = true }
+        }) { panel in
             Group {
                 switch panel {
                 case .search: SearchView(model: model, initialQuery: searchQuery)
                 case .worlds: WorldsView(model: model)
                 case .saved: PlacesView(model: model)
-                case .settings: SettingsView(model: model)
+                case .settings: SettingsView(model: model, replayIntroduction: { replayIntroPending = true; self.panel = nil })
                 case .steps: RouteStepsView(model: model)
                 }
             }.tint(model.world.theme.accent).preferredColorScheme(["ctos","horizon"].contains(model.world.id) ? .light : .dark)
         }
-        .fullScreenCover(isPresented: $model.showWelcome) { WelcomeView(model: model) }
+        .fullScreenCover(isPresented: $model.showWelcome, onDismiss: { if model.pendingImport != nil { showImportConfirmation = true } }) { WelcomeView(model: model) }
         .onOpenURL { model.offerImport($0.absoluteString) }
-        .alert("Open shared destination?", isPresented: Binding(get: { model.pendingImport != nil && !model.showWelcome }, set: { if !$0 { model.pendingImport = nil } })) {
+        .onChange(of: model.pendingImport) { _, proposal in
+            guard proposal != nil else { return }
+            if panel != nil { panel = nil }
+            else if !model.showWelcome { showImportConfirmation = true }
+        }
+        .alert("Open shared destination?", isPresented: $showImportConfirmation) {
             Button("Cancel", role: .cancel) { model.pendingImport = nil }
             Button("Open destination") {
                 guard !model.navigating, let proposal = model.pendingImport else { return }

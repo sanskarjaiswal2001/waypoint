@@ -31,12 +31,21 @@ final class WaypointUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Your places"].waitForExistence(timeout: 5))
         app.buttons["Done"].tap()
         app.buttons["Settings"].tap()
-        XCTAssertTrue(app.staticTexts["0.2.0"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.switches["Spoken directions"].exists)
+        XCTAssertTrue(app.switches["Spoken directions"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.switches["Miles and feet"].exists)
-        app.buttons["Done"].tap()
+        for _ in 0..<5 { if app.staticTexts["0.2.0"].isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(app.staticTexts["0.2.0"].exists)
+        for _ in 0..<5 { if app.buttons["Replay introduction"].isHittable { break }; app.swipeDown() }
+        app.buttons["Replay introduction"].tap()
+        XCTAssertTrue(app.buttons["Skip introduction"].waitForExistence(timeout: 5))
+        app.buttons["Skip introduction"].tap()
+        app.buttons["Continue"].tap()
+        app.buttons["Continue"].tap()
+        app.buttons["Continue"].tap()
+        app.buttons["Open map"].tap()
+        XCTAssertTrue(app.buttons["Search places"].waitForExistence(timeout: 5))
         let map = XCTAttachment(screenshot: app.screenshot())
-        map.name = "Old West map"
+        map.name = "Themed map"
         map.lifetime = .keepAlways
         add(map)
     }

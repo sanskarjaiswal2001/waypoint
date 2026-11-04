@@ -133,6 +133,7 @@ struct RouteStepsView: View {
 
 struct SettingsView: View {
     @Bindable var model: NavigationModel
+    let replayIntroduction: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var clearConfirm = false
     var body: some View {
@@ -155,7 +156,7 @@ struct SettingsView: View {
                     Link("Open location settings", destination: URL(string: UIApplication.openSettingsURLString)!)
                 }
                 Section("Your places and worlds") {
-                    Button("Replay introduction") { model.showWelcome = true; dismiss() }
+                    Button("Replay introduction") { replayIntroduction(); dismiss() }
                     Button("Clear saved places and history", role: .destructive) { clearConfirm = true }
                 }
                 Section("Feedback") { NavigationLink("Send feedback") { FeedbackView(world: model.world) } }
