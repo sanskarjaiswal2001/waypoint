@@ -60,10 +60,18 @@ final class NavigationModel: NSObject {
 
     override init() {
         let defaults = UserDefaults.standard
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") {
+            for key in ["world", "onboarded", "saved", "recent"] { defaults.removeObject(forKey: key) }
+        }
+        #endif
         world = World.all.first { $0.id == defaults.string(forKey: "world") } ?? World.all[0]
         saved = Self.restore("saved")
         recent = Self.restore("recent")
         super.init()
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") { showWelcome = true }
+        #endif
         location.$fix.receive(on: DispatchQueue.main).sink { [weak self] in self?.fix = $0 }.store(in: &subscriptions)
         location.$problem.receive(on: DispatchQueue.main).sink { [weak self] problem in
             guard let self else { return }

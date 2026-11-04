@@ -30,6 +30,11 @@ public enum RoutePreparation {
                   Coordinate(latitude: point[1], longitude: point[0]).isValid else { throw ServiceError.invalidResponse }
             let next = allSteps[min(index + 1, allSteps.count - 1)]
             let instruction = instruction(for: next)
+            var currentManeuver = maneuver
+            if (currentManeuver["instruction"] as? String)?.isEmpty != false {
+                currentManeuver["instruction"] = Self.instruction(for: allSteps[index])
+                allSteps[index]["maneuver"] = currentManeuver
+            }
             if (allSteps[index]["voiceInstructions"] as? [Any])?.isEmpty != false {
                 var voice = [[String: Any]]()
                 if distance > 210 {

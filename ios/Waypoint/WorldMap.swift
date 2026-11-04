@@ -1,4 +1,5 @@
 import MapLibre
+import FerrostarCore
 import SwiftUI
 import WaypointKit
 

@@ -59,8 +59,8 @@ notices = ["Waypoint\n\n" + (ROOT / "LICENSE").read_text(),
            "Map tiles: OpenFreeMap. https://openfreemap.org\n"
            "Terrain: Mapzen / Tilezen. https://www.mapzen.com/rights/\n"
            "MapLibre Native: BSD 2-Clause. https://github.com/maplibre/maplibre-native\n"
-           "Ferrostar: MIT / Apache 2.0. https://github.com/stadiamaps/ferrostar\n"]
-for path in sorted((ROOT / "docs/licenses").iterdir()):
+           "Ferrostar: BSD 3-Clause. https://github.com/stadiamaps/ferrostar\n"]
+for path in sorted((ROOT / "docs/licenses").iterdir()) + sorted((ROOT / "ios/ThirdPartyLicenses").iterdir()):
     if path.is_file():
         notices.append(path.name + "\n\n" + path.read_text())
 (DEST / "notices.txt").write_text("\n\n---\n\n".join(notices))

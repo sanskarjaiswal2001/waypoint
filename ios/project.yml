@@ -67,6 +67,16 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SUPPORTS_MACCATALYST: NO
         GENERATE_INFOPLIST_FILE: NO
+  WaypointUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [WaypointUITests]
+    dependencies:
+      - target: Waypoint
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.waypoint.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   Waypoint:
     build:
@@ -74,5 +84,8 @@ schemes:
         Waypoint: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets: [WaypointUITests]
     archive:
       config: Release

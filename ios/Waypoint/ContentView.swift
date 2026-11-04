@@ -78,7 +78,7 @@ struct ContentView: View {
 
     private var guidance: some View {
         HStack(alignment: .top, spacing: 14) {
-            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill").font(.largeTitle)
+            Image(systemName: maneuverSymbol).font(.largeTitle)
                 .foregroundStyle(model.world.accent).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
                 if let distance = model.navigation?.currentProgress?.distanceToNextManeuver {
@@ -135,6 +135,16 @@ struct ContentView: View {
                 }.buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
             }
         }.padding(18).background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 24))
+    }
+
+    private var maneuverSymbol: String {
+        let instruction = model.instruction.lowercased()
+        if instruction.contains("arrived") { return "flag.checkered" }
+        if instruction.contains("roundabout") { return "arrow.triangle.2.circlepath" }
+        if instruction.contains("uturn") || instruction.contains("u-turn") { return "arrow.uturn.down" }
+        if instruction.contains("left") { return "arrow.turn.up.left" }
+        if instruction.contains("right") { return "arrow.turn.up.right" }
+        return "arrow.up"
     }
 
     private var attribution: some View {
