@@ -128,6 +128,8 @@ Android Auto keeps Google Maps available in the launcher. Open Waypoint there to
 
 An iPhone/iPad port is being developed in [`ios/`](ios/README.md) for iOS 17 or later. It has implementations of the 27 themed phone HUDs, shared map assets, search and navigation controls. Android feature parity is still being checked, and several behaviours need device testing.
 
+Progress and remaining work are tracked in [issue #12](https://github.com/the-geeky-couldron/waypoint/issues/12).
+
 Unsigned [iOS preview builds](https://github.com/sanskarjaiswal2001/waypoint/releases) are currently published on the contributor's fork for installation through LiveContainer, SideStore or AltStore Classic. Read the [feature comparison](ios/PARITY.md) and [iOS validation record](ios/VALIDATION.md) for known gaps and tests that have run. The promotional screenshots above show Android.
 
 ## Get Waypoint

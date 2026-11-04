@@ -2,6 +2,8 @@
 
 A native SwiftUI port for iPhone and iPad on iOS 17 or later. Development and Android parity checks are ongoing. The app shares Android's 27 MapLibre styles, map fonts, patterns and online providers, with Ferrostar 0.59.0 for guidance.
 
+[Upstream issue #12](https://github.com/the-geeky-couldron/waypoint/issues/12) tracks the port and remaining work.
+
 The source includes themed phone HUDs, POI layers, onboarding, search, route controls, saved places and preferences. Read the [feature comparison](PARITY.md) for partial implementations and missing Android behaviours. The [validation record](VALIDATION.md) lists completed checks and tests that still need to run.
 
 This is an experimental preview. The newer phone UI, GPS behaviour, speech and background guidance still need device testing. CarPlay, Android's APK installer and satellite counts are outside this port. The GitHub README's promotional screenshots show Android.
