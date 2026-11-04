@@ -58,6 +58,8 @@ targets:
         LSRequiresIPhoneOS: true
         NSLocationWhenInUseUsageDescription: Waypoint uses your location to show your position, preview routes and guide you to a destination.
         UIBackgroundModes: [location, audio]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
         UILaunchScreen:
           UIColorName: ''
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
