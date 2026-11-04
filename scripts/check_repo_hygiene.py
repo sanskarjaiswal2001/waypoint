@@ -17,7 +17,7 @@ blocked_roots = (
     "tools/waypoint-motion/public/", "tools/waypoint-motion/source-blips/",
     "tools/waypoint-motion/source-poi-sheets/", "docs/images/captures/",
 )
-blocked_suffixes = {".apk", ".aab", ".log", ".pyc", ".mov", ".webm", ".avi", ".pdf"}
+blocked_suffixes = {".apk", ".aab", ".ipa", ".mobileprovision", ".log", ".pyc", ".mov", ".webm", ".avi", ".pdf"}
 blocked_suffixes |= {".keystore", ".jks", ".p12", ".pem"}
 readme_media = {
     "docs/images/waypoint-icon.png",
@@ -54,7 +54,7 @@ private_patterns = (
     re.compile(r"(?:sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)"),
 )
 text_suffixes = {".md", ".kt", ".kts", ".py", ".ts", ".tsx", ".js", ".cjs",
-                 ".json", ".jsonl", ".yml", ".yaml", ".xml", ".properties", ".txt", ".sh"}
+                 ".json", ".jsonl", ".yml", ".yaml", ".xml", ".properties", ".txt", ".sh", ".swift", ".plist"}
 for name in candidates:
     path = ROOT / name
     if not path.is_file() or path.suffix.lower() not in text_suffixes:

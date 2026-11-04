@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+command -v xcodegen >/dev/null || { echo 'Install XcodeGen: brew install xcodegen'; exit 1; }
+python3 scripts/prepare_ios.py
+xcodegen generate --spec ios/project.yml
+
+derived="$PWD/ios/build/DerivedData"
+xcodebuild -project ios/Waypoint.xcodeproj -scheme Waypoint -configuration Release \
+  -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$derived" \
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+
+python3 scripts/package_ios.py "$derived/Build/Products/Release-iphoneos/Waypoint.app" ios/build/release
