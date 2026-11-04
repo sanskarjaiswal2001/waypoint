@@ -1,10 +1,10 @@
 # Waypoint for iOS
 
-A native SwiftUI port for iPhone and iPad on **iOS 17 or later**. It shares the Android app's 27 MapLibre styles, bundled map fonts, map patterns and online providers. Ferrostar 0.59.0 handles route progress, spoken instructions, arrival and rerouting.
+A native SwiftUI port for iPhone and iPad on iOS 17 or later. Development and Android parity checks are ongoing. The app shares Android's 27 MapLibre styles, map fonts, patterns and online providers, with Ferrostar 0.59.0 for guidance.
 
-From 0.2.0, the phone interface follows Android's 27 world-specific atlas layouts, including the shared UI fonts, emblems, illustrations, POI atlases, custom markers, compass, route controls and onboarding artwork. It also includes nearby searches, route steps, persistent voice/units/tilt preferences, multiple favourite worlds, confirmed destination imports, feedback drafts and iOS release checks. See [phone parity and platform differences](PARITY.md).
+The source includes themed phone HUDs, POI layers, onboarding, search, route controls, saved places and preferences. Read the [feature comparison](PARITY.md) for partial implementations and missing Android behaviours. The [validation record](VALIDATION.md) lists completed checks and tests that still need to run.
 
-This is an experimental preview. Background guidance, GPS reliability, the new phone layouts and real-road behaviour still need device validation. CarPlay, Android's APK self-installer and satellite counts are outside this phone port. iOS supplies native permission dialogs, speech, keyboard and sheets. The GitHub README's promotional screenshots show Android.
+This is an experimental preview. The newer phone UI, GPS behaviour, speech and background guidance still need device testing. CarPlay, Android's APK installer and satellite counts are outside this port. The GitHub README's promotional screenshots show Android.
 
 ## Install through SideStore or AltStore Classic
 
@@ -18,7 +18,9 @@ An existing installation opens directly into the new themed HUD. Use **Settings 
 
 To open a shared `geo:` or `google.navigation:` destination, paste it into **Search places** and tap **Open shared destination**. Review the confirmation before allowing a lookup or route preview. Direct external dispatch depends on your installer/LiveContainer host. An import never replaces active guidance. Updates appear as release links; install the newer IPA through your existing installer.
 
-The IPA is deliberately unsigned and cannot be installed by tapping it directly in Files. It contains one arm64 device app, no app extensions and no restricted CarPlay entitlement. SideStore/AltStore handles signing and refresh. Free-account signatures normally need refreshing within seven days; follow the installer's current guidance and account limits. AltStore PAL is a different distribution system and is not the IPA-import route described here.
+The IPA is unsigned and cannot be installed by tapping it directly in Files. It contains one arm64 device app, no app extensions and no restricted CarPlay entitlement. SideStore/AltStore handles signing and refresh. Free-account signatures normally need refreshing within seven days; follow the installer's current guidance and account limits. AltStore PAL is a different distribution system and does not use the IPA-import route described here.
+
+LiveContainer can also import the IPA. Basic launch and map rendering were reported on an earlier preview; the 0.2.0 UI and navigation flows still need checks there. Keep the same app container when updating to retain local data, and manage location permission on the LiveContainer instance hosting Waypoint.
 
 For updates, import the newer IPA using the same installer, account and app identity. Avoid deleting the existing app if you want to keep its saved places. Checksums are published in **SHA256SUMS-iOS**:
 
@@ -80,7 +82,7 @@ Generated projects, staged resources, package build caches and IPAs are ignored.
 
 ## CI and releases
 
-The iOS workflow runs core routing/search tests and compiles a Release device build on a macOS runner. Branch builds upload the IPA as a workflow artifact. Push an `ios-v*` tag to build and publish an iOS prerelease with the IPA and checksum. The separate tag prefix leaves the Android release workflow and stable update channel alone.
+The iOS workflow is configured to run core tests, compile a Release device build and run the native parser/UI suites on a macOS runner. Branch builds upload the IPA as a workflow artifact. An `ios-v*` tag publishes an iOS prerelease after the build job passes. This tag prefix keeps iOS releases separate from the Android stable update channel. Check the actual run status before treating CI as validation; the workflow file alone is not a test result.
 
 Before tagging, update `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `ios/project.yml` and review `ios/RELEASE_NOTES.md`. Commit the resolved Swift package file when dependencies change; the build stages it into the generated project before resolving packages.
 

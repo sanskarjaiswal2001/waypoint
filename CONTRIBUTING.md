@@ -16,3 +16,11 @@ Keep real roads, location confidence and guidance readable when changing a game 
 Run the relevant Android unit tests and lint. Validate cartography after map-style edits with `node scripts/validate_styles.cjs`. See [the release guide](docs/releasing.md) for signed builds and [validation notes](docs/validation.md) for the distinction between controlled tests and real-road evidence.
 
 README artwork can be reproduced using [the promotional art generator](scripts/create_readme_promo.py) and local sanitised demonstration captures. Keep source captures, render outputs, logs, APKs and reference imagery out of Git. Run `python3 scripts/check_repo_hygiene.py` before committing; CI runs the same file, media and basic PII/secret-pattern checks. Review examples manually as well: automated checks cannot recognize every personal place or identifier.
+
+## iOS contributions
+
+The iOS port is in progress. Follow the [build guide](ios/README.md) and update the [feature comparison](ios/PARITY.md) when adding Android behaviour. Record test results and remaining device checks in [iOS validation](ios/VALIDATION.md). Keep implementation status separate from behaviour verified on a device.
+
+With a full Xcode installation selected, run `swift test --package-path ios/WaypointKit`. The iOS scheme also contains a native Ferrostar parser test and simulator UI tests. Include their results when they run; leave unexecuted checks marked as such. Use public demonstration locations for screenshots and follow the privacy rules above.
+
+Edit `ios/project.yml` and the staging scripts instead of committing the generated Xcode project or copied assets. UI fonts, artwork and map resources come from the Android tree. Keep signing credentials, provisioning profiles, IPAs and local QA outputs out of the PR.

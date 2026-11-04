@@ -1,5 +1,7 @@
 # Verification record — 30 October 2026
 
+This record covers Android. The in-progress iOS port has a [separate validation record](../ios/VALIDATION.md) and [Android feature comparison](../ios/PARITY.md). Results below do not establish iOS behaviour.
+
 Test device: connected Samsung SM-S948B, 1080 × 2340, density 450, Android 17 development build. Native Kotlin/Compose app, MapLibre Native. Installation and testing used USB debugging.
 
 ## Automated checks

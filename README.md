@@ -18,6 +18,7 @@
 <p align="center">
   <a href="#your-map-your-world">Explore the worlds</a> ·
   <a href="#your-world-on-the-dashboard">Android Auto</a> ·
+  <a href="#ios-port-work-in-progress">iOS port</a> ·
   <a href="#get-waypoint">Install</a> ·
   <a href="#build-from-source">Build</a> ·
   <a href="#privacy-and-services">Privacy</a> ·
@@ -123,6 +124,12 @@ Android Auto keeps Google Maps available in the launcher. Open Waypoint there to
 
 <img src="docs/images/promo/identity.jpg" width="100%" alt="Waypoint's launcher emblem and compact navigation identity." />
 
+## iOS port (work in progress)
+
+An iPhone/iPad port is being developed in [`ios/`](ios/README.md) for iOS 17 or later. It has implementations of the 27 themed phone HUDs, shared map assets, search and navigation controls. Android feature parity is still being checked, and several behaviours need device testing.
+
+Unsigned [iOS preview builds](https://github.com/sanskarjaiswal2001/waypoint/releases) are currently published on the contributor's fork for installation through LiveContainer, SideStore or AltStore Classic. Read the [feature comparison](ios/PARITY.md) and [iOS validation record](ios/VALIDATION.md) for known gaps and tests that have run. The promotional screenshots above show Android.
+
 ## Get Waypoint
 
 **[Download Waypoint.apk from GitHub Releases →](https://github.com/the-geeky-couldron/waypoint/releases/latest)**
@@ -140,11 +147,9 @@ The APK is checked against its checksum, package, version and installed signing 
 
 ## Build from source
 
-### iOS preview
+### iOS
 
-A native iPhone/iPad port is available in this fork under [`ios/`](ios/README.md), with the same 27 map worlds and online routing services. It targets iOS 17 or later and distributes an unsigned IPA for **SideStore or AltStore Classic** through [iOS preview releases](https://github.com/sanskarjaiswal2001/waypoint/releases). See the [iOS guide](ios/README.md) for build instructions, sideloading and validation limits.
-
-The 0.2.0 iOS preview adds the themed phone HUDs, shared artwork and fonts, POI icons, onboarding and remaining phone controls. The promotional screenshots above show Android; [the iOS parity guide](ios/PARITY.md) records what carries over and the platform differences.
+The [iOS build guide](ios/README.md#build) covers Xcode/XcodeGen and the user-folder xtool setup used for the preview IPA. Build outputs and signing material stay outside Git.
 
 ### Android
 
