@@ -14,7 +14,7 @@ public struct MapService: Sendable {
             components.queryItems! += [URLQueryItem(name: "lat", value: String(near.latitude)),
                                        URLQueryItem(name: "lon", value: String(near.longitude))]
         }
-        return try Self.decodePlaces(await fetch(components.url!, limit: 2 * 1024 * 1024))
+        return try Self.decodePlaces(await fetch(components.url!, limit: 2 * 1024 * 1024, timeout: 9))
     }
 
     public func routeData(from: Coordinate, to: Coordinate, mode: TravelMode) async throws -> Data {
@@ -56,12 +56,13 @@ public struct MapService: Sendable {
             }.map(clean).filter { !$0.isEmpty }.joined(separator: ", ")
             let id = "\(properties["osm_type"] ?? "point"):\(properties["osm_id"] ?? "\(point[0]),\(point[1])")"
             guard ids.insert(id).inserted else { return nil }
-            return Place(id: id, name: name, address: address, coordinate: coordinate)
+            return Place(id: id, name: name, address: address, coordinate: coordinate,
+                         kind: clean(properties["osm_value"] as? String ?? "place"), source: "Photon · OpenStreetMap")
         }
     }
 
-    private func fetch(_ url: URL, limit: Int) async throws -> Data {
-        var request = URLRequest(url: url, timeoutInterval: 25)
+    private func fetch(_ url: URL, limit: Int, timeout: TimeInterval = 25) async throws -> Data {
+        var request = URLRequest(url: url, timeoutInterval: timeout)
         request.setValue("WaypointiOS/0.1 (https://github.com/the-geeky-couldron/waypoint)", forHTTPHeaderField: "User-Agent")
         let (bytes, response) = try await URLSession.shared.bytes(for: request)
         guard let response = response as? HTTPURLResponse else { throw ServiceError.invalidResponse }

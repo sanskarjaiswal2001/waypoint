@@ -27,12 +27,27 @@ public struct Place: Codable, Hashable, Identifiable, Sendable {
     public let name: String
     public let address: String
     public let coordinate: Coordinate
+    public let kind: String
+    public let source: String
 
-    public init(id: String, name: String, address: String, coordinate: Coordinate) {
+    public init(id: String, name: String, address: String, coordinate: Coordinate, kind: String = "place", source: String = "") {
         self.id = id
         self.name = name
         self.address = address
         self.coordinate = coordinate
+        self.kind = kind
+        self.source = source
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, name, address, coordinate, kind, source }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(String.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        address = try values.decode(String.self, forKey: .address)
+        coordinate = try values.decode(Coordinate.self, forKey: .coordinate)
+        kind = try values.decodeIfPresent(String.self, forKey: .kind) ?? "place"
+        source = try values.decodeIfPresent(String.self, forKey: .source) ?? ""
     }
 }
 

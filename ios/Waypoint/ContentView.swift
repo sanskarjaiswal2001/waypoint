@@ -2,7 +2,7 @@ import SwiftUI
 import WaypointKit
 
 private enum Panel: String, Identifiable {
-    case search, worlds, saved, settings, steps
+    case search, worlds, saved, settings, steps, whatsNew
     var id: String { rawValue }
 }
 
@@ -45,6 +45,7 @@ struct ContentView: View {
                 case .saved: PlacesView(model: model)
                 case .settings: SettingsView(model: model, replayIntroduction: { replayIntroPending = true; self.panel = nil })
                 case .steps: RouteStepsView(model: model)
+                case .whatsNew: NavigationStack { ReleaseNotesView(model: model) }
                 }
             }.tint(model.world.theme.accent).preferredColorScheme(["ctos","horizon"].contains(model.world.id) ? .light : .dark)
         }
@@ -67,12 +68,17 @@ struct ContentView: View {
             }
         } message: { Text(importDescription) }
         .task { await model.checkForUpdate(quiet: true) }
+        .onChange(of: shouldShowReleaseNotes, initial: true) { _, show in if show { panel = .whatsNew } }
         .task {
             while !Task.isCancelled {
-                do { try await Task.sleep(for: .seconds(5)) } catch { return }
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
                 model.checkGPS()
+                model.refreshFollow()
             }
         }
+    }
+    private var shouldShowReleaseNotes: Bool {
+        model.releaseNotesPending && !model.showWelcome && !model.navigating && model.destination == nil && model.pendingImport == nil && panel == nil
     }
     private var importDescription: String {
         var value = model.pendingImport?.title ?? ""

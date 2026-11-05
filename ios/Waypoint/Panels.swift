@@ -9,6 +9,7 @@ struct SearchView: View {
     @State private var results = [Place]()
     @State private var loading = false
     @State private var error: String?
+    @State private var expanded = false
     init(model: NavigationModel, initialQuery: String = "") { self.model = model; _query = State(initialValue: initialQuery) }
     var body: some View {
         NavigationStack {
@@ -25,7 +26,7 @@ struct SearchView: View {
                 ForEach(results) { place in
                     Button { model.select(place); dismiss() } label: {
                         HStack { Image(systemName: "mappin.and.ellipse").foregroundStyle(model.world.theme.accent)
-                            VStack(alignment: .leading, spacing: 5) { Text(place.name).foregroundStyle(.primary); Text(place.address).font(.caption).foregroundStyle(.secondary) }
+                            VStack(alignment: .leading, spacing: 5) { Text(place.name).foregroundStyle(.primary); Text(place.address).font(.caption).foregroundStyle(.secondary); if !place.source.isEmpty { Text(place.source).font(.caption2).foregroundStyle(.secondary) } }
                             Spacer(); if let coordinate = model.coordinate { Text(model.distanceText(coordinate.distance(to: place.coordinate))).font(.caption).foregroundStyle(.secondary) }
                         }.padding(.vertical, 6)
                     }
@@ -33,17 +34,20 @@ struct SearchView: View {
                 if !loading && error == nil && results.isEmpty {
                     ContentUnavailableView(query.isEmpty ? "Where to?" : "No places found", systemImage: "magnifyingglass", description: Text(query.isEmpty ? "Search for a place or address, or hold the map to drop a pin." : "Try a different name or a nearby town."))
                 }
-                Section { Text("Search is provided by Photon using OpenStreetMap data. Your query and approximate search area are sent to Photon.").font(.caption).foregroundStyle(.secondary) }
+                if !query.isEmpty && !loading && NavigationImport.parse(query) == nil {
+                    Button("Search more providers") { expanded.toggle() }
+                }
+                Section { Text("Your query and nearby search area go to Photon. If it finds no strong match, Apple geocoding checks the address too. Saved and recent places are matched on this device.").font(.caption).foregroundStyle(.secondary) }
             }.navigationTitle("Search places").searchable(text: $query, prompt: "Place or address")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-                .task(id: query) {
+                .task(id: "\(query):\(expanded)") {
                     results = []; error = nil; loading = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     guard loading else { return }
                     if NavigationImport.parse(query) != nil { loading = false; return }
                     do {
                         try await Task.sleep(for: .milliseconds(450))
-                        let found = try await MapService().search(query, near: model.coordinate)
-                        try Task.checkCancellation(); results = found; loading = false
+                        let found = try await model.search(query, expanded: expanded)
+                        try Task.checkCancellation(); results = found.places; error = found.note; loading = false
                     } catch { guard !Task.isCancelled else { return }; self.error = error.localizedDescription; loading = false }
                 }
         }
@@ -150,6 +154,7 @@ struct SettingsView: View {
                     LabeledContent("Status", value: model.fixLabel)
                     if let fix = model.fix { LabeledContent("Accuracy", value: "±\(Int(fix.horizontalAccuracy.rounded())) m"); LabeledContent("Last reading", value: "\(max(0, Int(-fix.timestamp.timeIntervalSinceNow))) seconds ago") }
                     LabeledContent("Heading", value: model.bearing.map { "\(Int($0.rounded()))°" } ?? "Unavailable")
+                    LabeledContent("Heading source", value: model.location.headingSource == .course ? "GPS course" : model.location.headingSource == .compass ? "Compass" : "Waiting for sensors")
                     LabeledContent("Provider", value: "Core Location")
                     if let problem = model.locationProblem { Text(problem).font(.footnote) }
                     Button("Find my location", action: model.locate)
@@ -162,7 +167,8 @@ struct SettingsView: View {
                 Section("Feedback") { NavigationLink("Send feedback") { FeedbackView(world: model.world) } }
                 Section("Waypoint for iOS") {
                     Text("Real streets. Another world.").font(SharedArt.font("barlow_condensed_bold", 24))
-                    LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0")
+                    LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0")
+                    NavigationLink("What's new") { ReleaseNotesView(model: model) }
                     Button(model.checkingUpdates ? "Checking…" : "Check for updates") { Task { await model.checkForUpdate() } }.disabled(model.checkingUpdates || model.navigating)
                     if let status = model.updateStatus { Text(status).font(.footnote) }
                     if let update = model.availableUpdate { Link("Review version \(update.version)", destination: update.url) }
@@ -171,7 +177,7 @@ struct SettingsView: View {
                     Link("iOS build and installation guide", destination: URL(string: "https://github.com/sanskarjaiswal2001/waypoint/blob/ios-v0.2.0/ios/README.md")!)
                 }
                 Section("Location and privacy") {
-                    Text("Search queries and an optional nearby position go to Photon; route endpoints go to OSRM or Valhalla. Tiles and terrain come from OpenFreeMap and Mapzen. Core Location reverse geocoding supplies the current city label. There is no account or analytics service. Saved and recent destinations stay on this device.").font(.footnote)
+                    Text("Search queries and an optional nearby position go to Photon, with Apple geocoding as an address fallback. Route endpoints go to OSRM or Valhalla. Tiles and terrain come from OpenFreeMap and Mapzen. Core Location reverse geocoding supplies the current city label. There is no account or analytics service. Saved and recent destinations stay on this device.").font(.footnote)
                 }
                 Section("Open source") {
                     Link("Waypoint source", destination: URL(string: "https://github.com/the-geeky-couldron/waypoint")!)

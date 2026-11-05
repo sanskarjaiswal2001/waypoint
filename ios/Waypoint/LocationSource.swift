@@ -11,10 +11,13 @@ final class LocationSource: NSObject, LocationProviding, CLLocationManagerDelega
     @Published private(set) var problem: String?
     @Published private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published private(set) var headingDegrees: Double?
+    @Published private(set) var headingSource: HeadingSource = .none
     private let manager = CLLocationManager()
     private var watchdog = LocationUpdateWatchdog()
     private var updating = false
     private var foreground = true
+    private var headingArbiter = HeadingArbiter()
+    var mode: TravelMode = .car { didSet { headingArbiter.reset(); refreshHeading() } }
 
     private let permissionHelp = "Enable location for Waypoint, or LiveContainer when hosted, in iOS Settings."
 
@@ -69,6 +72,8 @@ final class LocationSource: NSObject, LocationProviding, CLLocationManagerDelega
         watchdog.stopped()
         manager.stopUpdatingLocation()
         manager.stopUpdatingHeading()
+        headingArbiter.reset()
+        refreshHeading()
     }
 
     func setForeground(_ foreground: Bool) {
@@ -78,6 +83,7 @@ final class LocationSource: NSObject, LocationProviding, CLLocationManagerDelega
     }
 
     func refreshIfNeeded() {
+        refreshHeading()
         guard foreground || navigating else { return }
         guard watchdog.shouldRestart(fixTimestamp: fix?.timestamp) else { return }
         stopUpdating()
@@ -106,6 +112,11 @@ final class LocationSource: NSObject, LocationProviding, CLLocationManagerDelega
         }.sorted { $0.timestamp < $1.timestamp }
         guard let latest = fresh.last else { return }
         fix = latest
+        headingArbiter.observeLocation(course: latest.course, speed: latest.speed,
+            courseAccuracy: latest.courseAccuracy, speedAccuracy: latest.speedAccuracy,
+            reliable: latest.horizontalAccuracy <= 60 && manager.accuracyAuthorization == .fullAccuracy,
+            mode: mode, at: ProcessInfo.processInfo.systemUptime - max(0, Date().timeIntervalSince(latest.timestamp)))
+        refreshHeading()
         problem = manager.accuracyAuthorization == .reducedAccuracy
             ? "Precise Location is off. " + permissionHelp
             : (latest.horizontalAccuracy > 65 ? "GPS accuracy is low. Waiting for a clearer position." : nil)
@@ -113,10 +124,20 @@ final class LocationSource: NSObject, LocationProviding, CLLocationManagerDelega
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
-        headingDegrees = newHeading.headingAccuracy >= 0
-            ? (newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading) : nil
-        lastHeading = Heading(clHeading: newHeading)
-        if let lastHeading { delegate?.locationManager(self, didUpdateHeading: lastHeading) }
+        let degrees = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
+        headingArbiter.observeCompass(degrees, reliable: newHeading.headingAccuracy >= 0 && newHeading.headingAccuracy <= 45,
+            at: ProcessInfo.processInfo.systemUptime - max(0, Date().timeIntervalSince(newHeading.timestamp)))
+        refreshHeading()
+        if headingDegrees != nil {
+            lastHeading = Heading(clHeading: newHeading)
+            if let lastHeading { delegate?.locationManager(self, didUpdateHeading: lastHeading) }
+        } else { lastHeading = nil }
+    }
+
+    private func refreshHeading() {
+        let reading = headingArbiter.current(at: ProcessInfo.processInfo.systemUptime)
+        headingDegrees = reading.reliable ? reading.degrees : nil
+        headingSource = reading.source
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

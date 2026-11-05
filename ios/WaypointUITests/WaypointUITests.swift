@@ -17,6 +17,8 @@ final class WaypointUITests: XCTestCase {
         app.buttons["Continue"].tap()
         app.buttons["Continue"].tap()
         app.buttons["Open map"].tap()
+        XCTAssertTrue(app.buttons["Explore map"].waitForExistence(timeout: 5))
+        app.buttons["Explore map"].tap()
         XCTAssertTrue(app.buttons["Worlds"].waitForExistence(timeout: 10))
         app.buttons["Worlds"].tap()
         let oldWest = app.buttons["OLD WEST"]
@@ -33,8 +35,8 @@ final class WaypointUITests: XCTestCase {
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.switches["Spoken directions"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.switches["Miles and feet"].exists)
-        for _ in 0..<5 { if app.staticTexts["0.2.0"].isHittable { break }; app.swipeUp() }
-        XCTAssertTrue(app.staticTexts["0.2.0"].exists)
+        for _ in 0..<5 { if app.staticTexts["0.3.0"].isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(app.staticTexts["0.3.0"].exists)
         for _ in 0..<5 { if app.buttons["Replay introduction"].isHittable { break }; app.swipeDown() }
         app.buttons["Replay introduction"].tap()
         XCTAssertTrue(app.buttons["Skip introduction"].waitForExistence(timeout: 5))

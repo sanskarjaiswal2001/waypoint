@@ -272,7 +272,11 @@ struct WorldMap: UIViewRepresentable {
         }
 
         @objc func panned(_ recognizer: UIPanGestureRecognizer) {
-            if recognizer.state == .began { model.followLocation = false }
+            switch recognizer.state {
+            case .began: model.mapGestureStarted()
+            case .ended, .cancelled, .failed: model.mapGestureEnded()
+            default: break
+            }
         }
 
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,

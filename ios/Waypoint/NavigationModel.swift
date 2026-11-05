@@ -8,14 +8,20 @@ import WaypointKit
 
 struct RoutingProvider: CustomRouteProvider {
     let mode: TravelMode
+    var onFailure: (@Sendable () async -> Void)?
 
     func getRoutes(userLocation: UserLocation, waypoints: [Waypoint]) async throws -> [Route] {
         guard let destination = waypoints.last else { throw ServiceError.noRoute }
         let origin = userLocation.coordinates
-        let data = try await MapService().routeData(
-            from: Coordinate(latitude: origin.lat, longitude: origin.lng),
-            to: Coordinate(latitude: destination.coordinate.lat, longitude: destination.coordinate.lng), mode: mode
-        )
+        let data: Data
+        do {
+            data = try await MapService().routeData(
+                from: Coordinate(latitude: origin.lat, longitude: origin.lng),
+                to: Coordinate(latitude: destination.coordinate.lat, longitude: destination.coordinate.lng), mode: mode)
+        } catch {
+            if !Task.isCancelled { await onFailure?() }
+            throw error
+        }
         try Task.checkCancellation()
         let route = try createRouteFromOsrmRoute(routeData: data, waypoints: [
             Waypoint(coordinate: origin, kind: .break), destination
@@ -35,7 +41,9 @@ final class NavigationModel: NSObject {
     var recent: [Place] {
         didSet { persist(recent, key: "recent") }
     }
-    var mode: TravelMode = .car
+    var mode: TravelMode {
+        didSet { UserDefaults.standard.set(mode.rawValue, forKey: "mode"); location.mode = mode }
+    }
     var destination: Place?
     var route: Route?
     var navigation: NavigationState?
@@ -47,6 +55,7 @@ final class NavigationModel: NSObject {
     var gpsStale = false
     var cameraRequest = UUID()
     var followLocation = true
+    @ObservationIgnored private var followPolicy = MapFollowPolicy()
     private var tiltOverride = UserDefaults.standard.object(forKey: "tilted") as? Bool
     var tilted: Bool {
         get { tiltOverride ?? world.defaultTilted }
@@ -85,18 +94,40 @@ final class NavigationModel: NSObject {
     @ObservationIgnored private var coreSubscriptions = Set<AnyCancellable>()
     @ObservationIgnored private var routingTask: Task<Void, Never>?
     @ObservationIgnored private var requestID = UUID()
+    @ObservationIgnored private var searchService: PlaceSearch?
+
+    static var releaseID: String {
+        AppPreferences.releaseID(version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0",
+                                 build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "6")
+    }
+    var releaseNotesPending = AppPreferences.shouldShowRelease(NavigationModel.releaseID, in: .standard)
+    func markReleaseNotesSeen() {
+        AppPreferences.markReleaseSeen(Self.releaseID, in: .standard)
+        releaseNotesPending = false
+    }
+
+    func search(_ query: String, expanded: Bool = false) async throws -> PlaceSearchResult {
+        if searchService == nil {
+            let values = UserDefaults.standard.dictionary(forKey: "searchAliases") as? [String: String] ?? [:]
+            searchService = PlaceSearch(primary: { try await MapService().search($0, near: $1) },
+                fallback: { try await ApplePlaceSearch.find($0, near: $1) }, aliases: SearchAliases(values))
+        }
+        return try await searchService!.search(query, near: coordinate, local: saved + recent, expanded: expanded)
+    }
 
     override init() {
         let defaults = UserDefaults.standard
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") {
-            for key in ["world", "onboarded", "saved", "recent"] { defaults.removeObject(forKey: key) }
+            for key in ["world", "onboarded", "saved", "recent", "mode", "releaseNotesSeen"] { defaults.removeObject(forKey: key) }
         }
         #endif
         world = World.all.first { $0.id == defaults.string(forKey: "world") } ?? World.all[0]
         saved = Self.restore("saved")
         recent = Self.restore("recent")
+        mode = AppPreferences.travelMode(in: defaults)
         super.init()
+        location.mode = mode
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") {
             showWelcome = true
@@ -132,10 +163,7 @@ final class NavigationModel: NSObject {
         return LocationUpdateWatchdog.isFresh(fix.timestamp) && (0...65).contains(fix.horizontalAccuracy) && locationProblem == nil
     }
 
-    var bearing: Double? {
-        if let fix, hasFreshFix, fix.speed > 0.8, fix.course >= 0, fix.courseAccuracy >= 0, fix.courseAccuracy <= 45 { return fix.course }
-        return headingDegrees
-    }
+    var bearing: Double? { headingDegrees }
     var fixLabel: String {
         if let fix, hasFreshFix { return "GPS ±\(Int(fix.horizontalAccuracy.rounded())) m · \(mode.title)" }
         return fix == nil ? "Map preview · \(mode.title)" : "Finding GPS · \(mode.title)"
@@ -182,8 +210,21 @@ final class NavigationModel: NSObject {
 
     func locate() {
         location.request()
+        followPolicy.resume()
         followLocation = true
         cameraRequest = UUID()
+    }
+
+    func mapGestureStarted() {
+        followPolicy.gestureStarted(at: ProcessInfo.processInfo.systemUptime)
+        followLocation = false
+    }
+    func mapGestureEnded() { followPolicy.gestureEnded(at: ProcessInfo.processInfo.systemUptime) }
+    func refreshFollow() {
+        if followPolicy.shouldFollow(navigating: navigating, hasDestination: destination != nil, at: ProcessInfo.processInfo.systemUptime), !followLocation {
+            followLocation = true
+            cameraRequest = UUID()
+        }
     }
 
     func retryMap() {
@@ -247,18 +288,22 @@ final class NavigationModel: NSObject {
         message = nil
         let id = UUID()
         requestID = id
-        let provider = RoutingProvider(mode: mode)
+        let provider = RoutingProvider(mode: mode, onFailure: { [weak self] in
+            await self?.rerouteFailed(request: id)
+        })
+        let policy = GuidancePolicy(mode: mode)
         let config = SwiftNavigationControllerConfig(
-            waypointAdvance: .waypointWithinRange(25),
+            waypointAdvance: .waypointWithinRange(policy.waypointRadius),
             stepAdvanceCondition: stepAdvanceDistanceEntryAndExit(
                 distanceToEndOfStep: 30, distanceAfterEndOfStep: 5, minimumHorizontalAccuracy: 32),
-            arrivalStepAdvanceCondition: stepAdvanceDistanceToEndOfStep(distance: 10, minimumHorizontalAccuracy: 32),
-            routeDeviationTracking: .staticThreshold(minimumHorizontalAccuracy: 15, maxAcceptableDeviation: 50),
+            arrivalStepAdvanceCondition: stepAdvanceDistanceToEndOfStep(distance: policy.arrivalDistance, minimumHorizontalAccuracy: 32),
+            routeDeviationTracking: .staticThreshold(minimumHorizontalAccuracy: policy.deviationAccuracy, maxAcceptableDeviation: policy.deviationDistance),
             snappedLocationCourseFiltering: .snapToRoute
         )
         let engine = FerrostarCore(routeProvider: .customProvider(provider), locationProvider: location,
                                   navigationControllerConfig: config, networkSession: URLSession.shared)
-        engine.minimumTimeBeforeRecalculation = 10
+        engine.minimumTimeBeforeRecalculation = GuidancePolicy.recalculationDelay
+        engine.minimumMovementBeforeRecalculation = GuidancePolicy.recalculationMovement
         engine.delegate = self
         core = engine
         coreSubscriptions.removeAll()
@@ -304,6 +349,7 @@ final class NavigationModel: NSObject {
             if core.spokenInstructionObserver.isMuted == voiceEnabled { core.spokenInstructionObserver.toggleMute() }
             muted = core.spokenInstructionObserver.isMuted
             try core.startNavigation(route: route)
+            followPolicy.resume()
             followLocation = true
             cameraRequest = UUID()
             UIApplication.shared.isIdleTimerDisabled = true
@@ -334,6 +380,9 @@ final class NavigationModel: NSObject {
     func clearDestination() {
         stop()
         destination = nil
+        followPolicy.resume()
+        followLocation = true
+        cameraRequest = UUID()
     }
 
     func toggleSaved(_ place: Place) {
@@ -362,6 +411,11 @@ final class NavigationModel: NSObject {
         routing = false
     }
 
+    private func rerouteFailed(request: UUID) {
+        guard requestID == request, navigating else { return }
+        message = "Couldn't update the route. Keeping the current route; another attempt will follow as you move."
+    }
+
     private func persist(_ places: [Place], key: String) {
         if let data = try? JSONEncoder().encode(places) { UserDefaults.standard.set(data, forKey: key) }
     }
@@ -387,7 +441,7 @@ extension NavigationModel: FerrostarCoreDelegate {
     nonisolated func core(_ core: FerrostarCore, loadedAlternateRoutes routes: [Route]) {
         Task { @MainActor [weak self] in
             guard let self, self.core === core, self.navigating, let route = routes.first else { return }
-            do { try core.startNavigation(route: route) }
+            do { try core.startNavigation(route: route); self.message = nil }
             catch { self.message = "Could not start the recalculated route. Stop and preview again when safe." }
         }
     }
