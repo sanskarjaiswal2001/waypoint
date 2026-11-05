@@ -108,7 +108,7 @@ for url in try files.contentsOfDirectory(at: root.appendingPathComponent("app/sr
 for url in try files.contentsOfDirectory(at: root.appendingPathComponent("app/src/main/assets/globe/textures"), includingPropertiesForKeys: nil)
     where url.pathExtension == "png" {
     let base = "art_" + url.deletingPathExtension().lastPathComponent
-    if !files.fileExists(atPath: ui.appendingPathComponent(base + ".webp").path) && !files.fileExists(atPath: ui.appendingPathComponent(base + ".png").path) {
+    if !["webp", "png", "jpg"].contains(where: { files.fileExists(atPath: ui.appendingPathComponent(base + "." + $0).path) }) {
         try save(image(url), ui.appendingPathComponent(base + ".png"))
     }
 }

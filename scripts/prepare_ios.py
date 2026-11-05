@@ -8,7 +8,8 @@ import re
 import shutil
 import subprocess
 from ios_cartography import add_discovery_layers
-from ios_catalogue import read_worlds, validate_worlds
+from ios_catalogue import read_worlds, validate_worlds, typefaces
+from ios_fonts import normalize_stratum
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +25,7 @@ for directory in ("styles", "glyphs"):
 source = (ROOT / "app/src/main/java/com/waypoint/app/World.kt").read_text()
 worlds = read_worlds(source)
 validate_worlds(ROOT, worlds)
+typefaces(ROOT, worlds)
 vehicle_source = (ROOT / "app/src/main/java/com/waypoint/app/VehicleMarkers.kt").read_text()
 vehicles = {name: dict(car=car, bike=bike, body=body, trim=trim, pixel="pixel=true" in flags, wire="wire=true" in flags)
             for name, car, bike, body, trim, flags in re.findall(
@@ -61,6 +63,8 @@ for directory, origin in (("fonts", ROOT / "app/src/main/res/font"), ("motion", 
             shutil.copyfile(origin / name, target / name)
     else:
         shutil.copytree(origin, target)
+for name in ("stratum2_regular.ttf", "stratum2_bold.ttf"):
+    normalize_stratum(DEST / "fonts" / name)
 subprocess.run(["swift", str(ROOT / "scripts/prepare_ios_art.swift"), str(ROOT)], check=True)
 
 patterns = DEST / "patterns"

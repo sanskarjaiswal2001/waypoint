@@ -19,7 +19,7 @@ struct SearchView: View {
                 if query.isEmpty {
                     Section("Nearby") { HStack { ForEach(["Coffee","Food","Fuel","Parking"], id: \.self) { value in Button(value) { query = value }.buttonStyle(.bordered) } } }
                 }
-                if NavigationImport.parse(query) != nil {
+                if NavigationSharing.isDestinationInput(query), NavigationSharing.parseText(query) != nil {
                     Button("Open shared destination") { model.offerImport(query); dismiss() }
                 }
                 if loading { HStack { ProgressView(); Text("Searching…") } }
@@ -35,7 +35,7 @@ struct SearchView: View {
                 if !loading && error == nil && results.isEmpty {
                     ContentUnavailableView(query.isEmpty ? "Where to?" : "No places found", systemImage: "magnifyingglass", description: Text(query.isEmpty ? "Search for a place or address, or hold the map to drop a pin." : "Try a different name or a nearby town."))
                 }
-                if !query.isEmpty && !loading && NavigationImport.parse(query) == nil {
+                if !query.isEmpty && !loading && !NavigationSharing.isDestinationInput(query) {
                     Button("Search more providers") { expanded = true; searchAttempt += 1 }
                 }
                 Section { Text("Your query and nearby search area go to Photon. If it finds no strong match, Apple geocoding checks the address too. Saved and recent places are matched on this device.").font(.caption).foregroundStyle(.secondary) }
@@ -45,12 +45,19 @@ struct SearchView: View {
                 .task(id: "\(query):\(expanded):\(searchAttempt)") {
                     results = []; error = nil; loading = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     guard loading else { return }
-                    if NavigationImport.parse(query) != nil { loading = false; return }
+                    if NavigationSharing.isDestinationInput(query) {
+                        loading = false
+                        if NavigationSharing.parseText(query) == nil { error = "This destination is invalid or unsupported. Paste an address or a supported map link." }
+                        return
+                    }
                     do {
                         try await Task.sleep(for: .milliseconds(450))
                         let found = try await model.search(query, expanded: expanded)
                         try Task.checkCancellation(); results = found.places; error = found.note; loading = false
                     } catch { guard !Task.isCancelled else { return }; self.error = error.localizedDescription; loading = false }
+                }
+                .onSubmit(of: .search) {
+                    if NavigationSharing.isDestinationInput(query), NavigationSharing.parseText(query) != nil { model.offerImport(query); dismiss() }
                 }
         }
     }

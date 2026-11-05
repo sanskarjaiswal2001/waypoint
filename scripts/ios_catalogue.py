@@ -34,3 +34,20 @@ def validate_worlds(root, worlds):
         if not any(path.is_file() for path in emblems): missing.append(f"{name}: missing emblem")
         if name not in treatments: missing.append(f"{name}: missing native phone HUD")
     if missing: raise ValueError("\n".join(missing))
+
+
+def typefaces(root, worlds):
+    root = Path(root)
+    source = (root / "app/src/main/java/com/waypoint/app/WorldTypography.kt").read_text()
+    fonts = dict(re.findall(r'^\s*(\w+)\(R\.font\.(\w+)', source, re.M))
+    for role, function in [("titleTypeface", "titleTypeface"), ("readingTypeface", "readingTypeface")]:
+        body = source.split(f'fun World.{function}()', 1)[1].split('}', 1)[0]
+        mapping = {}
+        for names, font in re.findall(r'((?:World\.\w+\s*,?\s*)+)->\s*WorldTypeface\.(\w+)', body):
+            for name in re.findall(r'World\.(\w+)', names): mapping[name] = font
+        fallback = re.search(r'else\s*->\s*WorldTypeface\.(\w+)', body).group(1)
+        for world in worlds:
+            font = fonts[mapping.get(world["enum"], fallback)]
+            if not any((root / f"app/src/main/res/font/{font}.{extension}").is_file() for extension in ("ttf", "otf")):
+                raise ValueError(f"{world['id']}: missing {role} font {font}")
+            world[role] = font

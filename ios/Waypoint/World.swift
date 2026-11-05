@@ -19,6 +19,8 @@ struct World: Decodable, Identifiable, Hashable {
     let groundHex: String
     var vehicle: VehicleLivery? = nil
     var voice: WorldVoice? = nil
+    var titleTypeface: String? = nil
+    var readingTypeface: String? = nil
 
     var accent: Color { Color(hex: accentHex) }
     var routeColor: UIColor { UIColor(hex: routeHex) }

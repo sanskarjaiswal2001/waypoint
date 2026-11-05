@@ -416,30 +416,43 @@ struct AtlasCompass: View {
         Button(action: action) {
             ZStack {
                 Circle().fill(world.theme.panel)
-                Canvas { context, size in
+                dial
+                directionLabel
+            }.frame(width: ornate ? 96 : 72, height: ornate ? 96 : 72)
+        }.buttonStyle(.plain).accessibilityLabel(bearing.map { "Heading \(Int($0)) degrees. Recenter" } ?? "Heading unavailable. Recenter")
+    }
+    private var dial: some View {
+        Canvas { context, size in drawDial(context: &context, size: size) }
+    }
+    private func drawDial(context: inout GraphicsContext, size: CGSize) {
                     let c = CGPoint(x: size.width / 2, y: size.height / 2)
                     let radius = size.width / 2 - 7
                     context.stroke(Path(ellipseIn: CGRect(x: 7, y: 7, width: radius * 2, height: radius * 2)), with: .color(world.theme.foreground.opacity(0.65)), lineWidth: 1)
                     var index = Path(); index.move(to: CGPoint(x: c.x, y: 7)); index.addLine(to: CGPoint(x: c.x, y: 14)); context.stroke(index, with: .color(world.theme.foreground), lineWidth: 2)
                     if let bearing {
                         for i in 0..<24 {
-                            let a = (Double(i) * 15 - bearing - 90) * .pi / 180
-                            let outer = CGPoint(x: c.x + cos(a) * radius, y: c.y + sin(a) * radius)
+                            let a: Double = (Double(i) * 15 - bearing - 90) * Double.pi / 180
+                            let cosine = CGFloat(cos(a)), sine = CGFloat(sin(a))
+                            let outer = CGPoint(x: c.x + cosine * radius, y: c.y + sine * radius)
                             let innerR = radius - (i % 6 == 0 ? 10 : 5)
-                            var p = Path(); p.move(to: outer); p.addLine(to: CGPoint(x: c.x + cos(a) * innerR, y: c.y + sin(a) * innerR))
+                            var p = Path(); p.move(to: outer); p.addLine(to: CGPoint(x: c.x + cosine * innerR, y: c.y + sine * innerR))
                             context.stroke(p, with: .color(world.theme.foreground.opacity(i % 6 == 0 ? 0.85 : 0.35)), lineWidth: 1)
                         }
                         var rose = context; rose.translateBy(x: c.x, y: c.y); rose.rotate(by: .degrees(-bearing)); rose.translateBy(x: -c.x, y: -c.y)
                         var north = Path(); north.move(to: CGPoint(x: c.x, y: 10)); north.addLine(to: CGPoint(x: c.x - 4, y: 22)); north.addLine(to: CGPoint(x: c.x + 4, y: 22)); north.closeSubpath()
                         rose.fill(north, with: .color(["old_west","ghost"].contains(world.id) ? Color(hex: "E0725E") : world.theme.accent))
                     }
-                }
-                VStack(spacing: 2) {
-                    Text(bearing.map { ["N","NE","E","SE","S","SW","W","NW"][Int(($0 + 22.5).truncatingRemainder(dividingBy: 360) / 45)] } ?? "—").font(world.font(ornate ? 23 : 16))
-                    if let bearing { Text("\(Int(bearing.rounded()) % 360)°").font(world.font(11)) }
-                }.foregroundStyle(world.theme.foreground)
-            }.frame(width: ornate ? 96 : 72, height: ornate ? 96 : 72)
-        }.buttonStyle(.plain).accessibilityLabel(bearing.map { "Heading \(Int($0)) degrees. Recenter" } ?? "Heading unavailable. Recenter")
+    }
+    private var directionLabel: some View {
+        VStack(spacing: 2) {
+            Text(cardinal).font(world.font(ornate ? 23 : 16))
+            if let bearing { Text("\(Int(bearing.rounded()) % 360)°").font(world.font(11)) }
+        }.foregroundStyle(world.theme.foreground)
+    }
+    private var cardinal: String {
+        guard let bearing, bearing.isFinite else { return "—" }
+        let normalized = (bearing.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
+        return ["N","NE","E","SE","S","SW","W","NW"][Int((normalized + 22.5).truncatingRemainder(dividingBy: 360) / 45)]
     }
 }
 

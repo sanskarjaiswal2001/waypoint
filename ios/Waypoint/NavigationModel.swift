@@ -100,6 +100,8 @@ final class NavigationModel: NSObject {
     @ObservationIgnored private var coreSubscriptions = Set<AnyCancellable>()
     @ObservationIgnored private var routingTask: Task<Void, Never>?
     @ObservationIgnored private var requestID = UUID()
+    @ObservationIgnored private var importTask: Task<Void, Never>?
+    @ObservationIgnored private var importID = UUID()
     @ObservationIgnored private var searchService: PlaceSearch?
 
     static var releaseID: String {
@@ -247,10 +249,41 @@ final class NavigationModel: NSObject {
     }
 
     func offerImport(_ value: String) {
+        cancelImport()
         guard !navigating else { message = "End the current trip before opening another destination."; return }
-        guard let proposal = NavigationImport.parse(value) else { message = "This destination link is invalid or unsupported."; return }
+        guard let proposal = NavigationSharing.parseText(value) else { message = "This destination link is invalid or unsupported. Paste the address instead."; return }
         pendingImport = proposal
     }
+    func acceptImport(_ proposal: NavigationImport, openSearch: @escaping @MainActor (String) -> Void) {
+        guard !navigating else { return }
+        cancelImport()
+        let ticket = importID
+        func apply(_ proposal: NavigationImport) {
+            guard !navigating else { return }
+            switch proposal {
+            case .point(let coordinate, let label): select(Place(id: "shared:\(UUID().uuidString)", name: label, address: "Shared destination", coordinate: coordinate)); preview()
+            case .search(let query): openSearch(query)
+            case .link: break
+            }
+        }
+        guard case .link(let url) = proposal else { apply(proposal); return }
+        message = "Opening the shared map link…"
+        importTask = Task { [weak self] in
+            do {
+                let resolved = try await NavigationSharing.resolve(url)
+                try Task.checkCancellation()
+                guard let self, self.importID == ticket, !self.navigating else { return }
+                self.importTask = nil
+                self.message = nil
+                if let resolved { apply(resolved) }
+                else { self.message = "That link did not identify a supported destination. Paste the address instead." }
+            } catch {
+                guard let self, self.importID == ticket, !Task.isCancelled else { return }
+                self.message = "The shared link could not be opened. Try again or paste the address."
+            }
+        }
+    }
+    private func cancelImport() { importID = UUID(); importTask?.cancel(); importTask = nil }
 
     func checkForUpdate(quiet: Bool = false) async {
         guard !checkingUpdates, !navigating else { return }
@@ -274,6 +307,7 @@ final class NavigationModel: NSObject {
 
     func select(_ place: Place) {
         guard !navigating else { return }
+        cancelImport()
         cancelRoute()
         destination = place
         route = nil
@@ -291,6 +325,7 @@ final class NavigationModel: NSObject {
 
     func preview() {
         guard let destination else { return }
+        cancelImport()
         guard hasFreshFix, let userLocation = location.lastLocation else {
             locate()
             message = "Waiting for a precise GPS position. Tap Preview route again when Locate has found you."
@@ -362,6 +397,7 @@ final class NavigationModel: NSObject {
             return
         }
         do {
+            cancelImport()
             location.navigating = true
             navigating = true
             if core.spokenInstructionObserver.isMuted == voiceEnabled { core.spokenInstructionObserver.toggleMute() }
@@ -382,6 +418,7 @@ final class NavigationModel: NSObject {
     }
 
     func stop() {
+        cancelImport()
         cancelRoute()
         navigating = false
         coreSubscriptions.removeAll()

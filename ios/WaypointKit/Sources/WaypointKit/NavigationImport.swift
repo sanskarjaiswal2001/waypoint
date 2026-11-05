@@ -4,9 +4,10 @@ import Foundation
 public enum NavigationImport: Equatable, Sendable {
     case point(Coordinate, label: String)
     case search(String)
+    case link(URL)
 
     public var title: String {
-        switch self { case .point(_, let label): return label; case .search(let query): return query }
+        switch self { case .point(_, let label): return label; case .search(let query): return query; case .link: return "Shared map link" }
     }
     public static func parse(_ value: String) -> Self? {
         guard value.count <= 4096, let colon = value.firstIndex(of: ":") else { return nil }

@@ -7,6 +7,7 @@ public struct Quest: Codable, Identifiable, Equatable, Sendable {
     public var place: Place?
     public var focusMinutes: Int
     public var focusFinished: Bool
+    public var focusCreditMinutes: Int? = nil
     public var completedAt: Date?
     public init(id: UUID = UUID(), title: String, notes: String = "", place: Place? = nil, focusMinutes: Int = 25) {
         self.id = id; self.title = title; self.notes = notes; self.place = place
@@ -77,7 +78,7 @@ public struct QuestBook: Codable, Equatable, Sendable {
     @discardableResult public mutating func complete(_ id: UUID, at now: Date = Date()) -> Bool {
         guard let index = quests.firstIndex(where: { $0.id == id }), quests[index].completedAt == nil else { return false }
         quests[index].completedAt = now
-        if !rewards.contains(where: { $0.questID == id }) { rewards.append(QuestReward(questID: id, focused: quests[index].focusFinished && quests[index].focusMinutes >= 10)) }
+        if !rewards.contains(where: { $0.questID == id }) { rewards.append(QuestReward(questID: id, focused: quests[index].focusFinished && (quests[index].focusCreditMinutes ?? 0) >= 10)) }
         if focus?.questID == id { focus = nil }
         return true
     }
@@ -101,7 +102,7 @@ public struct QuestBook: Codable, Equatable, Sendable {
         let expired = clock.secondsLeft(uptime: uptime, now: now, bootID: bootID) == 0
         guard expired, confirm else { focus = nil; return }
         clock.remaining = 0; clock.status = .finished; focus = clock
-        if let index = quests.firstIndex(where: { $0.id == clock.questID }) { quests[index].focusFinished = true }
+        if let index = quests.firstIndex(where: { $0.id == clock.questID }) { quests[index].focusFinished = true; quests[index].focusCreditMinutes = quests[index].focusMinutes }
     }
     public static func restore(_ data: Data) throws -> Self {
         guard data.count <= 2_000_000 else { throw ServiceError.tooLarge }

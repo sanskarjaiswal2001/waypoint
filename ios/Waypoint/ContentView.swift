@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var searchQuery = ""
     @State private var replayIntroPending = false
     @State private var showImportConfirmation = false
+    @State private var introPresented = false
 
     var body: some View {
         ZStack {
@@ -63,9 +64,9 @@ struct ContentView: View {
                 case .whatsNew: NavigationStack { ReleaseNotesView(model: model) }
                 case .quests: QuestsView(model: model)
                 }
-            }.tint(model.world.theme.accent).preferredColorScheme(["ctos","horizon"].contains(model.world.id) ? .light : .dark)
+            }.tint(model.world.theme.accent).preferredColorScheme(model.world.lightInterface ? .light : .dark)
         }
-        .fullScreenCover(isPresented: $model.showWelcome, onDismiss: { if model.pendingImport != nil { showImportConfirmation = true } }) { WelcomeView(model: model) }
+        .fullScreenCover(isPresented: $model.showWelcome, onDismiss: { introPresented = false; if model.pendingImport != nil { showImportConfirmation = true } }) { WelcomeView(model: model).onAppear { introPresented = true } }
         .onOpenURL { model.offerImport($0.absoluteString) }
         .onChange(of: model.navigating) { _, navigating in if navigating && panel == .quests { panel = nil } }
         .onChange(of: model.pendingImport) { _, proposal in
@@ -78,10 +79,7 @@ struct ContentView: View {
             Button("Open destination") {
                 guard !model.navigating, let proposal = model.pendingImport else { return }
                 model.pendingImport = nil
-                switch proposal {
-                case .point(let coordinate, let label): model.select(Place(id: "shared:\(UUID().uuidString)", name: label, address: "Shared destination", coordinate: coordinate)); model.preview()
-                case .search(let query): searchQuery = query; panel = .search
-                }
+                model.acceptImport(proposal) { query in searchQuery = query; panel = .search }
             }
         } message: { Text(importDescription) }
         .task { await model.checkForUpdate(quiet: true) }
@@ -95,7 +93,7 @@ struct ContentView: View {
         }
     }
     private var shouldShowReleaseNotes: Bool {
-        model.releaseNotesPending && !model.showWelcome && !model.navigating && model.destination == nil && model.pendingImport == nil && panel == nil
+        model.releaseNotesPending && !model.showWelcome && !introPresented && !showImportConfirmation && !model.navigating && model.destination == nil && model.pendingImport == nil && panel == nil
     }
     private var importDescription: String {
         var value = model.pendingImport?.title ?? ""
@@ -164,6 +162,8 @@ struct ContentView: View {
                 }
                 Picker("Travel mode", selection: Binding(get: { model.mode }, set: model.changeMode)) { ForEach(TravelMode.allCases, id: \.self) { Text($0.title).tag($0) } }.pickerStyle(.menu)
                 Button("Add a quest here") { model.questPlaceDraft = place; panel = .quests }
+                ShareLink("Share destination", item: NavigationSharing.mapURL(for: place, mode: model.mode))
+                Link("Open in Google Maps", destination: NavigationSharing.mapURL(for: place, mode: model.mode))
             }
         }.padding(14).atlasPanel(model.world)
     }

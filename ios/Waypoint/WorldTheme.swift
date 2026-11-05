@@ -90,6 +90,7 @@ extension World {
         return names[id] ?? additions[id] ?? subtitle
     }
     var titleFontFile: String {
+        if let titleTypeface { return titleTypeface }
         switch id {
         case "division": return "borda_bold"
         case "counter_strike": return "stratum2_bold"
@@ -112,6 +113,7 @@ extension World {
         }
     }
     var hudFontFile: String {
+        if let readingTypeface { return readingTypeface }
         switch id {
         case "division": return "borda_regular"
         case "counter_strike": return "stratum2_regular"
@@ -132,6 +134,7 @@ extension World {
         }
     }
     func font(_ size: CGFloat, title: Bool = false) -> Font { SharedArt.font(title ? titleFontFile : hudFontFile, size) }
+    var lightInterface: Bool { ["ctos", "horizon", "sea_chart", "aincrad", "home_console", "nier"].contains(id) }
     var artZoom: Double { ["los_santos":16.2,"old_west":16,"night_city":16.2,"pixel":17,"green_terminal":16.1,"san_andreas":16,"heat":15.8,"rivia":15.6,"vice_coast":16,"liberty":16.1,"ctos":16,"hyrule":15.7,"skyrim":15.5,"lands_between":15.6,"horizon":15.9,"assassin":15.6,"far_cry":15.7,"ghost":15.6,"bridges":15.7,"horizon_wilds":15.6,"spider":16.1,"hogwarts":15.5,"starfield":15.9,"kingdom":15.6,"saints":16,"just_cause":15.6,"mafia":16][id] ?? 16 }
     var artTilt: Double { ["night_city":45,"pixel":42,"skyrim":35,"far_cry":30,"bridges":25,"spider":40,"hogwarts":25,"starfield":30][id] ?? 45 }
     var defaultTilted: Bool { ["night_city","pixel","skyrim","far_cry","bridges","spider","hogwarts","starfield"].contains(id) }

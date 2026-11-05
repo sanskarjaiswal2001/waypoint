@@ -9,7 +9,8 @@ enum MapArtwork {
             if let image = SharedArt.image("poi_\(world.id)_\(kind)"), let cg = image.cgImage {
                 style.setImage(UIImage(cgImage: cg, scale: 4, orientation: .up), forName: "poi-\(kind)")
             } else {
-                style.setImage(kind == "education" ? education(world) : generatedPOI(kind, world), forName: "poi-\(kind)")
+                let fallback = kind == "education" ? education(world) : generatedPOI(kind, world)
+                if let cg = fallback.cgImage { style.setImage(UIImage(cgImage: cg, scale: 2, orientation: .up), forName: "poi-\(kind)") }
             }
         }
         style.setImage(player(world), forName: "nav-arrow")
