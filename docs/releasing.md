@@ -4,19 +4,23 @@ The public update channel is `the-geeky-couldron/waypoint` on GitHub Releases. A
 
 ## What runs automatically
 
-- Pushes to `main`, pull requests and manual runs: version validation, 27 map-style checks, debug APK, unit tests and Android lint. Reports and the debug APK are saved for 14 days.
-- A pushed `v*` tag: the same checks, followed by an optimized, signed APK. GitHub publishes `Waypoint.apk` and `SHA256SUMS` only after those jobs succeed.
-- The signing job disables Gradle caches. Verification caches are read-only outside pushes to `main`; the basic GitHub cache provider is explicit.
-- Pull requests never receive the release signing secrets. Actions are pinned to commit hashes. The release job alone receives repository-content write permission.
-- Before restoring the signing key, the release job checks that the tagged commit is already reachable from `main`. This catches accidental tags on unmerged commits.
+- Pull requests and pushes to `main` run a check tree: [actionlint](https://github.com/rhysd/actionlint) and [zizmor](https://github.com/zizmorcore/zizmor) for workflow safety; repository hygiene and version checks; all 39 MapLibre styles; ESLint and TypeScript for the editable motion source; a debug build, unit tests and Android lint; then focused Android emulator tests for packaged security and quest storage. Pull requests also use the open-source [Dependency Review Action](https://github.com/actions/dependency-review-action) to reject new dependencies with moderate or more severe known vulnerabilities. The debug APK and test reports are saved for 14 days. Pull requests never receive signing secrets.
+- The `Android` workflow graph starts with repository integrity, fans out into workflow, dependency, map-style, motion-source and Android checks, then joins again. The emulator follows the Android build; on `main`, the branches meet at the signing job. The final `CI tree` job joins every path, writes an indented result tree to the run summary, and fails if any check required for that event failed or was skipped. Require **CI tree** in the `main` branch rule if you want a single branch-protection check; the individual jobs still show their own logs and reports.
+- Every successful push to `main` builds and signs the optimized APK after the checks pass, then saves `Waypoint.apk` and `SHA256SUMS` as a 14-day Actions artifact. No manual signing dispatch is required. Main builds are never canceled by a newer push, so a tag can still find its exact commit's artifact.
+- The separate `Release` workflow handles pushed `v*` tags, so tag publishing does not appear as a disconnected skipped node in the `Android` graph. It does not rebuild or re-sign the APK. It finds the successful `main` run for the exact tagged commit, downloads that run's signed artifact, verifies its checksum, then publishes the APK and checksum file. If the main run is still running, the tag job waits up to 30 minutes; it fails sooner if that run finishes unsuccessfully. A tag without a successful matching main artifact fails.
+- The signing job disables Gradle caches. Other Android jobs use the basic GitHub cache provider, with pull requests and emulator jobs read-only. npm dependencies use lockfiles and the setup-node cache.
+- The motion-source check also runs `npm audit` at high severity. Moderate advisories are visible in npm output but do not block the build.
+- Actions are pinned to commit hashes; the actionlint binary is pinned to a release and SHA-256 digest. Signing jobs are read-only; only the tag-publish job receives repository-content write permission and read access to Actions artifacts. zizmor runs without paid GitHub Advanced Security.
 
 ## Protect release authority
 
-The owner must verify the effective GitHub rules for `main` and `v*` tags before relying on the signed update channel: require review and passing checks before changes reach `main`, limit who can create release tags, prevent tag replacement or deletion, and require an independent release approval where available. A tag-push workflow is read from the tagged revision, so the ancestry check inside this workflow cannot by itself protect against an actor who can tag an arbitrary commit containing a changed workflow. Record who can change workflow files and who can access release signing secrets. These controls are configured on GitHub and are not established by this repository's source.
+The owner must verify the effective GitHub rules for `main` and `v*` tags before relying on the signed update channel: require review and passing checks before changes reach `main`, limit who can create release tags, prevent tag replacement or deletion, and require an independent release approval where available. GitHub evaluates a tag-push workflow from the tagged revision, so protect `main` and release-tag authority even though the publisher only accepts artifacts from a successful `main` run for the exact same commit. Record who can change workflow files and who can access release signing secrets. These controls are configured on GitHub and are not established by this repository's source.
+
+The published artifact must come from a completed successful `main` run and match the tagged commit exactly. Release tags should be pushed while that signed artifact is still available; it expires after 14 days.
 
 ## Signing
 
-The release job requires four repository Actions secrets:
+The automatic `main` signing job requires four repository Actions secrets:
 
 | Secret | Value |
 | --- | --- |
@@ -35,28 +39,32 @@ Local release builds accept `WAYPOINT_KEYSTORE`, `WAYPOINT_STORE_PASSWORD`, `WAY
 
 1. Change `version.properties`. Use a stable `major.minor.patch` version, with each part from 0–999. Set `VERSION_CODE = major × 1,000,000 + minor × 1,000 + patch`. This matches the updater in the published app, which checks the APK code against the release tag. Always increase the code; `1.5.0` uses `1005000`.
 2. Update `docs/releases/current.md` and copy it to `app/src/main/assets/release-notes.md`. The bundled copy powers the post-update What’s New screen; GitHub’s release body powers the updater. `scripts/check_version.py` requires both copies to match. Update tests/screenshots when behavior or appearance changes.
-3. Run verification, commit, push, then tag the exact commit:
+3. Run verification, commit and push to `main`. Wait for its signed artifact job to pass, then tag that exact commit. The tag workflow publishes the existing signed artifact without rebuilding it:
 
 ```sh
 python3 scripts/check_version.py
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 # Example only: first change version.properties and both release-note files to match.
 git add version.properties docs/releases/current.md app/src/main/assets/release-notes.md
-git commit -m "Release 1.5.0"
+git commit -m "Release 2.0.0"
 git push origin main
-git tag -a v1.5.0 -m "Waypoint 1.5.0"
-git push origin v1.5.0
+git tag -a v2.0.0 -m "Waypoint 2.0.0"
+git push origin v2.0.0
 ```
 
-Watch the Android workflow. Its release job verifies that the tag and version file agree. After publication, verify the APK and checksum on the release page. Keep pushed tags immutable, including tags whose release workflow failed. Use a new patch version and an annotated tag for corrections; never overwrite an already-published APK.
+Watch the `Android` workflow for the signed artifact, then the `Release` workflow after pushing the tag. The release job verifies that the tag and version file agree, then checks the downloaded APK against its SHA-256 file before publishing. After publication, verify the APK and checksum on the release page. Keep pushed tags immutable, including tags whose release workflow failed. Use a new patch version and an annotated tag for corrections; never overwrite an already-published APK.
 
 ## Updater behavior
 
-Waypoint checks GitHub's latest stable release API when the app enters the foreground. Drafts, prereleases and older/equal versions are ignored. An available update is offered over the idle map and returns on each launch until installed; choosing Later dismisses it only for the current foreground entry. The update prompt and Settings show GitHub's release notes before download. After installation, a one-time What’s New dialog shows the matching notes bundled in the APK. Downloads remain explicit, with no background polling, GitHub credentials or location information involved. Settings also offers a manual check.
+Waypoint checks GitHub's latest stable release API when the app enters the foreground. Drafts, prereleases and older/equal versions are ignored. An available update is offered over the idle map and returns on each launch until installed; choosing Later dismisses it only for the current foreground entry. The update prompt and Settings show GitHub's release notes before download. After installation, a one-time What’s New dialog shows the matching notes bundled in the APK. Downloads remain explicit, with no GitHub credentials or location information involved. Settings also offers a manual check.
+
+Version 2.0.0 also schedules background checks by default, about twice a day, using Android's persistent JobScheduler with network and battery constraints. Android chooses the actual execution time and may delay checks while the phone sleeps. A contextual explanation precedes the notification permission request. Battery settings are offered with an explanation of delayed checks; declining either permission path leaves normal use and manual checks available. There is no direct battery-exemption permission or always-running update service.
+
+An allowed App updates notification opens update details and is deduplicated per release version. It never starts an APK download or installation. The notification channel and Android notification settings remain under the user's control. Checks defer notifications during driving navigation or Android Auto use. No paid push provider, account or new backend is involved.
 
 On a later foreground entry, Waypoint refreshes an earlier available offer so a newer release can supersede it. A temporary check failure keeps the earlier offer; an active download or verified APK remains available until the user acts on it.
 
-Pushing a commit to `main` only runs verification. Installed users see the update prompt after the newer signed `v*` GitHub release is published and they next open Waypoint on the phone. The app does not send a push notification while closed or interrupt navigation in the car.
+Pushing a commit to `main` automatically creates a signed APK artifact for testing; it does not publish or notify users. Installed users see the update prompt after the newer signed `v*` GitHub release is published and they next open Waypoint on the phone. Version 2.0.0 and later can also notify while closed after a scheduled check, if Android allows notifications. Older installed versions gain that background behaviour only after updating.
 
 Before showing Install update, Waypoint checks:
 

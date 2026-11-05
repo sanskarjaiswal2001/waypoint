@@ -8,6 +8,13 @@ import java.io.IOException
 class PlaceSearchTest {
     private val near=Coordinate(51.50,-.12)
     private val station=Place("station","Riverton","Riverton, Example District",Coordinate(51.501,-.121),"geocoder")
+    @Test fun deletedLocalMatchesDoNotSurviveInTheProviderCache()=runBlocking {
+        var calls=0
+        val search=PlaceSearch(PlaceSearchProvider { _,_->calls++;emptyList() })
+        assertEquals(listOf(station),search.search("Riverton",near,listOf(station)).places)
+        assertTrue(search.search("Riverton",near).places.isEmpty())
+        assertEquals("Remote cache should still be reused",1,calls)
+    }
     @Test fun railwayQueryRanksTheLocalStationOverUnrelatedStations() {
         val unrelated=Place("other","Farvale Railway Station","Farvale, Example Country",Coordinate(51.6,-.2),"station")
         val farmland=Place("farm","Riverton Research Centre","Riverton",near,"farmland")
@@ -79,5 +86,29 @@ class PlaceSearchTest {
         var calls=0
         val search=PlaceSearch(PlaceSearchProvider{_,_->calls++;emptyList()})
         assertTrue(runCatching{search.search("a".repeat(257),near)}.isFailure);assertEquals(0,calls)
+    }
+    @Test fun secondCoordinateSearchFindsItsOwnDestinationWithoutCallingProviders()=runBlocking {
+        var calls=0
+        val first=Place("coordinate:51.5,-0.12","First place","Old coordinates",near)
+        val search=PlaceSearch(PlaceSearchProvider{_,_->calls++;listOf(first)})
+        val second=search.search("51.5012, -0.1234",near,listOf(first)).places.single()
+        assertEquals(Coordinate(51.5012,-0.1234),second.point)
+        assertNotEquals(first.id,second.id)
+        assertEquals(0,calls)
+        assertEquals(second,search.search("51.5012, -0.1234",near,listOf(first,second)).places.single())
+    }
+    @Test fun invalidCoordinatePairDoesNotFallBackToAnUnrelatedSavedPlace()=runBlocking {
+        var calls=0
+        val search=PlaceSearch(PlaceSearchProvider{_,_->calls++;listOf(station)})
+        val result=search.search("91, 181",near,listOf(station))
+        assertTrue(result.places.isEmpty())
+        assertTrue(result.note!!.contains("valid coordinates"))
+        assertEquals(0,calls)
+    }
+    @Test fun numberedStreetAddressStillUsesPlaceSearch()=runBlocking {
+        var calls=0
+        val search=PlaceSearch(PlaceSearchProvider{_,_->calls++;emptyList()})
+        search.search("12, 34 High Street",near)
+        assertEquals(1,calls)
     }
 }

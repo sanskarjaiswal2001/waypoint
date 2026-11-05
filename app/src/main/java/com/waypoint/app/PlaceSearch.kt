@@ -7,6 +7,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.text.Normalizer
+import java.net.URLEncoder
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -84,6 +85,19 @@ class SearchAliases(entries:Map<String,String> = emptyMap()) {
 
 data class PlaceSearchResult(val places:List<Place>,val note:String?=null)
 
+/** Coordinate pairs are destinations, not names to send to the geocoder. */
+internal fun coordinateSearchResult(query: String, local: List<Place>): PlaceSearchResult? {
+    val value = query.trim()
+    if (!Regex("^[+-]?[0-9.]+\\s*,\\s*[+-]?[0-9.]*\\s*(?:\\([^()]*\\))?$").matches(value)) return null
+    val encoded = URLEncoder.encode(value, "UTF-8")
+    val point = (NavigationImport.parse("android.intent.action.VIEW", "geo:0,0?q=$encoded") as? NavigationImport.Point)
+        ?.coordinate ?: return PlaceSearchResult(emptyList(), "Enter valid coordinates as latitude, longitude (for example, 51.5007, -0.1246).")
+    val saved = local.firstOrNull { it.point == point }
+    val place = saved ?: Place("coordinate:${point.lat},${point.lon}", coordinateLabel(point),
+        "Coordinates: ${point.lat}, ${point.lon}", point, "coordinates")
+    return PlaceSearchResult(listOf(place))
+}
+
 /** Bounded, memory-only cache and two independent providers; no remote autocomplete fan-out. */
 class PlaceSearch(private val primary:PlaceSearchProvider,private val fallback:PlaceSearchProvider?=null,private val aliases:SearchAliases=SearchAliases()) {
     private val cache=LinkedHashMap<String,List<Place>>()
@@ -91,18 +105,23 @@ class PlaceSearch(private val primary:PlaceSearchProvider,private val fallback:P
     suspend fun search(query:String,near:Coordinate,local:List<Place> = emptyList(),expanded:Boolean=false):PlaceSearchResult = withContext(Dispatchers.Default) { mutex.withLock {
         require(query.length<=256){"Use a shorter place name or address (up to 256 characters)."}
         require(near.isValid()){"Waiting for a valid location."}
+        coordinateSearchResult(query, local)?.let { return@withLock it }
         val effectiveQuery=aliases.resolve(query)
         val aliasNote=if(effectiveQuery!=query)"Searching for $effectiveQuery" else null
         val variants=PlaceMatcher.variants(effectiveQuery)
         val key="${PlaceMatcher.normalize(query)}:${(near.lat*100).roundToInt()}:${(near.lon*100).roundToInt()}:$expanded"
         cache[key]?.let{return@withLock PlaceSearchResult(PlaceMatcher.ranked(effectiveQuery,near,it+local),aliasNote)}
         val candidates=local.toMutableList()
+        val remote=mutableListOf<Place>()
         var failures=0
         var completed=0
         suspend fun lookup(provider:PlaceSearchProvider,q:String) {
             try {
                 val results=withTimeoutOrNull(9000){provider.find(q,near)}
-                if(results==null)failures++ else { candidates.addAll(results.take(20));completed++ }
+                if(results==null)failures++ else {
+                    val bounded=results.take(20)
+                    remote.addAll(bounded);candidates.addAll(bounded);completed++
+                }
             } catch(e:CancellationException){throw e} catch(_:Exception){failures++}
         }
         lookup(primary,variants.first())
@@ -112,7 +131,8 @@ class PlaceSearch(private val primary:PlaceSearchProvider,private val fallback:P
             if(variants.size>1 && PlaceMatcher.ranked(effectiveQuery,near,candidates).isEmpty())lookup(fallback,variants.last())
         }
         val results=PlaceMatcher.ranked(effectiveQuery,near,candidates)
-        if(failures==0) { cache[key]=results;while(cache.size>40)cache.remove(cache.keys.first()) }
+        // Saved/recent matches are supplied afresh: deleting one must not leave a cached copy.
+        if(failures==0) { cache[key]=remote;while(cache.size>40)cache.remove(cache.keys.first()) }
         val note=when {
             failures>0 && results.isEmpty() -> "Search service unavailable. Check your connection and try again."
             failures>0 -> "Some search services are unavailable. Showing the matches found."
