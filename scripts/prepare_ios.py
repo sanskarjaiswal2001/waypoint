@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 from ios_cartography import add_discovery_layers
+from ios_catalogue import read_worlds, validate_worlds
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,15 +22,26 @@ for directory in ("styles", "glyphs"):
     shutil.copytree(assets / directory, target)
 
 source = (ROOT / "app/src/main/java/com/waypoint/app/World.kt").read_text()
-pattern = re.compile(
-    r'\w+\("([^"]+)","([^"]+)",R\.string\.\w+,"([^"]+)",'
-    r'Color\(0xFF([0-9A-Fa-f]{6})\),"(#[0-9A-Fa-f]{6})",Color\(0xFF([0-9A-Fa-f]{6})\)'
-)
-worlds = [dict(title=title, subtitle=subtitle, id=name, accentHex="#" + accent,
-               routeHex=route, groundHex="#" + ground)
-          for title, subtitle, name, accent, route, ground in pattern.findall(source)]
-if len(worlds) != 27 or len({world["id"] for world in worlds}) != len(worlds):
-    raise SystemExit("World catalogue changed; review the iOS staging parser")
+worlds = read_worlds(source)
+validate_worlds(ROOT, worlds)
+vehicle_source = (ROOT / "app/src/main/java/com/waypoint/app/VehicleMarkers.kt").read_text()
+vehicles = {name: dict(car=car, bike=bike, body=body, trim=trim, pixel="pixel=true" in flags, wire="wire=true" in flags)
+            for name, car, bike, body, trim, flags in re.findall(
+                r'World\.(\w+) -> VehicleLivery\(WorldTransport\.(\w+),WorldTransport\.(\w+),"(#[A-Fa-f0-9]+)","(#[A-Fa-f0-9]+)"([^)]*)\)', vehicle_source)}
+voice_source = (ROOT / "app/src/main/java/com/waypoint/app/WorldVoice.kt").read_text()
+voices = {name: dict(openings=[opening], cues=[cue], arrivals=[arrival], rate=float(rate), pitch=float(pitch))
+          for name, opening, cue, arrival, rate, pitch in re.findall(
+              r'World\.(\w+) -> WorldVoiceStyle\("([^"]*)","([^"]*)","([^"]*)",([.0-9]+)f,([.0-9]+)f\)', voice_source)}
+lines_source = (ROOT / "app/src/main/java/com/waypoint/app/WorldVoiceLines.kt").read_text()
+for name, body in re.findall(r'World\.(\w+) -> style\.withLines\((.*?)\)', lines_source, re.S):
+    lines = re.findall(r'"([^"]*)"', body)
+    if name not in voices or len(lines) != 6: raise SystemExit("Review voice lines for " + name)
+    for index, key in enumerate(("openings", "cues", "arrivals")): voices[name][key] += lines[index * 2:index * 2 + 2]
+for world in worlds:
+    name = world["enum"]
+    if name not in vehicles or name not in voices: raise SystemExit("Missing vehicle or voice treatment for " + name)
+    world["vehicle"] = vehicles[name]
+    world["voice"] = voices[name]
 for world in worlds:
     if not (DEST / "styles" / (world["id"] + ".json")).is_file():
         raise SystemExit("Missing style for " + world["id"])

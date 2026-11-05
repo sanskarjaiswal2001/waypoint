@@ -21,7 +21,7 @@ final class WaypointUITests: XCTestCase {
         app.buttons["Explore map"].tap()
         XCTAssertTrue(app.buttons["Worlds"].waitForExistence(timeout: 10))
         app.buttons["Worlds"].tap()
-        let oldWest = app.buttons["OLD WEST"]
+        let oldWest = app.buttons["OLD WEST, Red Dead Redemption 2"]
         XCTAssertTrue(oldWest.waitForExistence(timeout: 5))
         oldWest.tap()
         XCTAssertTrue(app.buttons["Search places"].waitForExistence(timeout: 10))
@@ -50,5 +50,15 @@ final class WaypointUITests: XCTestCase {
         map.name = "Themed map"
         map.lifetime = .keepAlways
         add(map)
+    }
+    func testLargeTextDestinationKeepsPrimaryActionReachable() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-waypoint-ui-testing", "-waypoint-route-layout-fixture", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        let preview = app.buttons["Preview route"]
+        XCTAssertTrue(preview.waitForExistence(timeout: 10))
+        XCTAssertTrue(preview.isHittable)
+        app.swipeUp()
+        XCTAssertTrue(preview.isHittable)
     }
 }

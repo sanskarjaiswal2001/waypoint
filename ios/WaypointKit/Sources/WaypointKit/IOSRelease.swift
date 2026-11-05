@@ -20,7 +20,7 @@ public struct IOSRelease: Equatable, Sendable {
                   let url = URL(string: release.html_url), let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                   components.scheme == "https", components.host == "github.com", components.user == nil, components.password == nil,
                   components.port == nil, components.query == nil, components.fragment == nil,
-                  components.path == "/sanskarjaiswal2001/waypoint/releases/tag/" + release.tag_name else { return nil }
+                  components.path == "/" + ProjectLinks.repository + "/releases/tag/" + release.tag_name else { return nil }
             return Self(version: version, url: url)
         }.max { lhs, rhs in (numbers(lhs.version) ?? []).lexicographicallyPrecedes(numbers(rhs.version) ?? []) }
     }

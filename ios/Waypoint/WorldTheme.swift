@@ -45,6 +45,17 @@ extension World {
     var theme: WorldTheme {
         let values: [String]
         switch id {
+        case "nier": values = ["D8D4BC", "35362E", "793D2B", "5D5C4D"]
+        case "stalker": values = ["212624", "E9E9DE", "E6C274", "B8BDB0"]
+        case "division": values = ["1A2B2D", "F2F4EA", "FFAE61", "B8CCC7"]
+        case "sea_chart": values = ["E9DAB4", "302D24", "7C352C", "625642"]
+        case "dos_atlas": values = ["1D160F", "FFDF9B", "FFCF80", "D2B58A"]
+        case "aincrad": values = ["FCFAEE", "383B3B", "8E531A", "68614D"]
+        case "counter_strike": values = ["282927", "F2F0E5", "FFD37F", "BFC3BB"]
+        case "defcon": values = ["051026", "D9E9FF", "9AC8FF", "A5BBD6"]
+        case "field_ops": values = ["252D25", "F0F2E8", "CDDCAC", "BCC7B0"]
+        case "retro_quest": values = ["32284A", "FFF1CF", "FFE0A0", "D6C5DF"]
+        case "home_console": values = ["F7FBFD", "203E4B", "12678C", "4A6472"]
         case "assassin": values = ["20282A", "F4EDDB", "EBD28C", "CBC8B7"]
         case "far_cry": values = ["17231F", "F5F4E8", "F4D57B", "C3CBBD"]
         case "ghost": values = ["202520", "F2EEE1", "F2EEE1", "C5C9BD"]
@@ -75,16 +86,26 @@ extension World {
     }
     var inspiration: String {
         let names = ["los_santos":"Grand Theft Auto V", "old_west":"Red Dead Redemption 2", "night_city":"Cyberpunk 2077", "pixel":"Minecraft", "green_terminal":"Fallout · Pip-Boy", "san_andreas":"GTA: San Andreas", "heat":"Need for Speed", "rivia":"The Witcher 3", "vice_coast":"GTA: Vice City", "liberty":"Grand Theft Auto IV", "ctos":"Watch Dogs 2", "hyrule":"Zelda: Breath of the Wild", "skyrim":"The Elder Scrolls V", "lands_between":"Elden Ring", "horizon":"Forza Horizon 5", "assassin":"Assassin’s Creed Origins", "far_cry":"Far Cry 5", "ghost":"Ghost of Tsushima", "bridges":"Death Stranding", "horizon_wilds":"Horizon Zero Dawn", "spider":"Marvel’s Spider-Man", "hogwarts":"Hogwarts Legacy", "starfield":"Starfield", "kingdom":"Kingdom Come: Deliverance II", "saints":"Saints Row: The Third", "just_cause":"Just Cause 3", "mafia":"Mafia: Definitive Edition"]
-        return names[id] ?? subtitle
+        let additions = ["division":"Tom Clancy’s The Division", "sea_chart":"Sea of Thieves", "dos_atlas":"DOS / ASCII interfaces", "aincrad":"Sword Art Online", "counter_strike":"Counter-Strike", "defcon":"DEFCON", "field_ops":"Call of Duty: Modern Warfare", "retro_quest":"16-bit console adventures", "home_console":"Wii U console interface", "stalker":"S.T.A.L.K.E.R.: Shadow of Chernobyl", "nier":"NieR:Automata"]
+        return names[id] ?? additions[id] ?? subtitle
     }
     var titleFontFile: String {
         switch id {
+        case "division": return "borda_bold"
+        case "counter_strike": return "stratum2_bold"
+        case "sea_chart": return "windlass"
+        case "skyrim": return "futura_condensed_medium"
+        case "field_ops": return "rajdhani"
+        case "dos_atlas", "defcon": return "share_tech_mono"
+        case "retro_quest": return "monocraft"
+        case "aincrad", "home_console", "nier": return "noto_sans"
+        case "stalker": return "roboto_condensed"
         case "vice_coast": return "yellowtail"
         case "los_santos", "san_andreas", "liberty": return "pricedown_black"
         case "lands_between", "hyrule", "assassin", "horizon_wilds", "hogwarts", "kingdom", "mafia": return "cinzel"
         case "old_west": return "chinese_rocks_regular"
         case "rivia": return "libre_baskerville"
-        case "pixel": return "monocraft"
+        case "pixel": return "minecraft_seven"
         case "green_terminal": return "share_tech_mono"
         case "night_city", "bridges", "spider", "starfield": return "rajdhani"
         default: return "barlow_condensed_bold"
@@ -92,8 +113,17 @@ extension World {
     }
     var hudFontFile: String {
         switch id {
+        case "division": return "borda_regular"
+        case "counter_strike": return "stratum2_regular"
+        case "sea_chart": return "libre_baskerville"
+        case "skyrim": return "futura_condensed_medium"
+        case "field_ops": return "rajdhani"
+        case "dos_atlas", "defcon": return "share_tech_mono"
+        case "retro_quest": return "monocraft"
+        case "aincrad", "home_console", "nier": return "noto_sans"
+        case "stalker": return "roboto_condensed"
         case "old_west": return "kirsty_regular"
-        case "pixel": return "monocraft"
+        case "pixel": return "minecraft_seven"
         case "green_terminal": return "roboto_condensed"
         case "night_city", "bridges", "spider", "starfield": return "rajdhani"
         case "lands_between", "rivia", "kingdom", "hogwarts", "mafia": return "libre_baskerville"
@@ -108,6 +138,13 @@ extension World {
     var routeWidth: Double { ["los_santos":5,"old_west":3.8,"night_city":3.8,"pixel":5,"green_terminal":3,"san_andreas":5,"heat":4.5,"rivia":3,"vice_coast":5,"liberty":4.5,"ctos":4,"hyrule":2.5,"skyrim":2,"lands_between":2.5,"horizon":4.5,"assassin":2.5,"far_cry":3.5,"ghost":2.5,"bridges":2.5,"horizon_wilds":3,"spider":4,"hogwarts":2.5,"starfield":2.5,"kingdom":3,"saints":4,"just_cause":3,"mafia":4][id] ?? 3 }
     var hudBorder: Color? {
         switch id {
+        case "division": return Color(hex: "9E7651")
+        case "sea_chart", "aincrad": return Color(hex: "8C7956")
+        case "dos_atlas", "retro_quest": return theme.accent
+        case "counter_strike", "field_ops": return theme.muted
+        case "defcon": return theme.accent
+        case "stalker": return Color(hex: "879080")
+        case "nier": return theme.muted
         case "hogwarts", "kingdom", "assassin": return Color(hex: "9D8A5F")
         case "bridges", "starfield": return Color(hex: "698E9F")
         case "hyrule": return Color(hex: "A9935B")

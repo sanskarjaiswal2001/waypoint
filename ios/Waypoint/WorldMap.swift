@@ -26,9 +26,6 @@ struct WorldMap: UIViewRepresentable {
         tap.require(toFail: hold)
         tap.delegate = context.coordinator
         map.addGestureRecognizer(tap)
-        let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.panned(_:)))
-        pan.delegate = context.coordinator
-        map.addGestureRecognizer(pan)
         context.coordinator.map = map
         context.coordinator.watchLoading()
         return map
@@ -86,6 +83,14 @@ struct WorldMap: UIViewRepresentable {
         var mapReloadRequest: UUID?
         var tilted = false
         private var renderedRoute: [CLLocationCoordinate2D] = []
+        private var userGesture = false
+
+        func mapView(_ mapView: MLNMapView, regionWillChangeWith reason: MLNCameraChangeReason, animated: Bool) {
+            if reason.rawValue & 0x1FE != 0 { userGesture = true; model.mapGestureStarted() }
+        }
+        func mapView(_ mapView: MLNMapView, regionDidChangeWith reason: MLNCameraChangeReason, animated: Bool) {
+            if userGesture { userGesture = false; model.mapGestureEnded() }
+        }
         private var routeKey: Int?
         private var destinationID: String?
         private var loadingTimeout: DispatchWorkItem?
@@ -224,7 +229,8 @@ struct WorldMap: UIViewRepresentable {
                 (style.layer(withIdentifier: "ios-accuracy") as? MLNCircleStyleLayer)?.circleRadius = NSExpression(forConstantValue: radius)
                 if let layer = style.layer(withIdentifier: "ios-position") as? MLNSymbolStyleLayer {
                     let known = model.hasFreshFix && model.bearing != nil
-                    layer.iconImageName = NSExpression(forConstantValue: known ? "nav-arrow" : "position-uncertain")
+                    let marker = model.mode == .walk || model.world.vehicle == nil ? "nav-arrow" : "nav-\(model.mode.rawValue)"
+                    layer.iconImageName = NSExpression(forConstantValue: known ? marker : "position-uncertain")
                     layer.iconRotation = NSExpression(forConstantValue: known ? (model.bearing ?? 0) : 0)
                 }
             } else { (style.source(withIdentifier: "ios-position") as? MLNShapeSource)?.shape = nil }
@@ -268,14 +274,6 @@ struct WorldMap: UIViewRepresentable {
                 guard !name.isEmpty, CLLocationCoordinate2DIsValid(point.coordinate) else { continue }
                 model.select(Place(id: "map:\(UUID().uuidString)", name: name, address: "Selected on map", coordinate: Coordinate(latitude: point.coordinate.latitude, longitude: point.coordinate.longitude)))
                 return
-            }
-        }
-
-        @objc func panned(_ recognizer: UIPanGestureRecognizer) {
-            switch recognizer.state {
-            case .began: model.mapGestureStarted()
-            case .ended, .cancelled, .failed: model.mapGestureEnded()
-            default: break
             }
         }
 

@@ -5,6 +5,7 @@ struct AtlasActions {
     let worlds: () -> Void
     let saved: () -> Void
     let settings: () -> Void
+    let quests: () -> Void
 }
 
 struct AtlasChrome: View {
@@ -22,6 +23,10 @@ struct AtlasChrome: View {
                     tool("Map tilt", "view.3d", action: { model.tilted.toggle() }).placed(.trailing)
                 }
             }.padding(12)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Button(action: actions.quests) { Label("Quests", systemImage: "checklist").font(w.font(16)).frame(maxWidth: .infinity, minHeight: 48) }
+                    .buttonStyle(.plain).atlasPanel(w).padding(.horizontal, 12)
+            }
         }
     }
 
@@ -54,7 +59,92 @@ struct AtlasChrome: View {
         case "saints": saints
         case "just_cause": medici
         case "mafia": mafia
+        case "division": division
+        case "sea_chart": seaChart
+        case "dos_atlas": dosAtlas
+        case "aincrad": aincrad
+        case "counter_strike": tacticalRadar
+        case "defcon": vectorCommand
+        case "field_ops": fieldOps
+        case "retro_quest": retroQuest
+        case "home_console": homeConsole
+        case "stalker": stalker
+        case "nier": machineAtlas
         default: compact
+        }
+    }
+    private var newWorldMenu: some View { HStack { worlds; saved; settings }.atlasPanel(w) }
+    private var division: some View {
+        ZStack {
+            VStack(alignment: .leading, spacing: 8) { VStack(alignment: .leading) { Label(w.title, systemImage: "location.north.circle").font(w.font(26, title: true)).foregroundStyle(p.accent); text(model.city, 16); text(model.fixLabel, 12) }.padding(14).frame(maxWidth: .infinity, alignment: .leading).atlasPanel(w); find() }.placed(.top)
+            VStack(alignment: .leading) { fix; newWorldMenu }.placed(.bottomLeading)
+            VStack { compass; locate }.placed(.bottomTrailing)
+        }
+    }
+    private var seaChart: some View {
+        ZStack {
+            VStack { text(w.title, 26, title: true).padding(14).atlasPanel(w); city; find("Where shall we go?") }.placed(.top)
+            VStack { compass; locate }.placed(.bottomLeading)
+            VStack { worlds; saved; settings }.placed(.bottomTrailing)
+        }
+    }
+    private var dosAtlas: some View {
+        ZStack {
+            VStack(alignment: .leading) { text("WAYPOINT / DOS ATLAS", 22); Divider().overlay(p.accent); city; find("Find a place") }.padding(12).atlasPanel(w).placed(.top)
+            VStack { fix; HStack { worlds; saved }; HStack { locate; settings } }.padding(10).frame(maxWidth: .infinity).atlasPanel(w).placed(.bottom)
+        }
+    }
+    private var aincrad: some View {
+        ZStack {
+            VStack { HStack { VStack(alignment: .leading) { text(w.title, 24, title: true); text(model.city, 14); fix }; Spacer(); Image(systemName: "location.north.circle").font(.largeTitle) }.padding(14).atlasPanel(w); find() }.placed(.top)
+            VStack { worlds; saved; settings }.placed(.bottomLeading)
+            VStack { compass; locate }.placed(.bottomTrailing)
+        }
+    }
+    private var tacticalRadar: some View {
+        ZStack {
+            HStack { compass; VStack(alignment: .leading) { text(w.title, 20, color: p.accent); text(model.city, 14) }.padding(12).frame(maxWidth: .infinity).atlasPanel(w) }.placed(.top)
+            VStack { find(); HStack { worlds; saved; settings; locate }.frame(maxWidth: .infinity).atlasPanel(w); fix }.placed(.bottom)
+        }
+    }
+    private var vectorCommand: some View {
+        ZStack {
+            VStack(alignment: .leading) { text(w.title, 24); text(model.city, 14); Divider().overlay(p.accent); fix }.padding(12).frame(maxWidth: .infinity, alignment: .leading).atlasPanel(w).placed(.top)
+            VStack { find("Set a destination"); HStack { worlds; saved; locate; settings }.frame(maxWidth: .infinity).atlasPanel(w) }.placed(.bottom)
+        }
+    }
+    private var fieldOps: some View {
+        ZStack {
+            VStack { HStack { VStack(alignment: .leading) { text(w.title, 26); text(model.city, 14) }.padding(12).frame(maxWidth: .infinity).atlasPanel(w); compass }; find("Choose your destination") }.placed(.top)
+            VStack(alignment: .leading) { fix; newWorldMenu }.placed(.bottomLeading)
+            locate.placed(.bottomTrailing)
+        }
+    }
+    private var retroQuest: some View {
+        ZStack {
+            VStack { text(w.title, 24); text(model.city, 14); fix; find("Find a place") }.padding(14).atlasPanel(w).placed(.top)
+            VStack { HStack { worlds; saved }; HStack { locate; settings } }.padding(10).frame(maxWidth: .infinity).atlasPanel(w).placed(.bottom)
+        }
+    }
+    private var homeConsole: some View {
+        ZStack {
+            VStack { VStack(alignment: .leading) { text("Where next?", 26); text(model.city, 16) }.padding(18).frame(maxWidth: .infinity, alignment: .leading).atlasPanel(w); find() }.placed(.top)
+            VStack { HStack { worlds; saved; settings; locate }; fix }.padding(8).frame(maxWidth: .infinity).atlasPanel(w).placed(.bottom)
+        }
+    }
+    private var stalker: some View {
+        ZStack {
+            Rectangle().stroke(Color(hex: "879080"), lineWidth: 5).padding(4).allowsHitTesting(false)
+            VStack { HStack { Image(systemName: "map").font(.largeTitle); VStack(alignment: .leading) { text(w.title, 24); text(model.city, 15) } }.padding(12).frame(maxWidth: .infinity).atlasPanel(w); find("Find a place") }.placed(.top)
+            VStack(alignment: .leading) { fix; newWorldMenu }.placed(.bottomLeading)
+            VStack { compass; locate }.placed(.bottomTrailing)
+        }
+    }
+    private var machineAtlas: some View {
+        ZStack {
+            VStack { VStack(alignment: .leading) { HStack { Image(systemName: "map"); text(w.title, 24) }; text(model.city, 15); VStack(spacing: 3) { ForEach(0..<3) { _ in Divider().overlay(p.muted) } } }.padding(14).frame(maxWidth: .infinity).atlasPanel(w); find("Find a place") }.placed(.top)
+            VStack(alignment: .leading) { fix; newWorldMenu }.placed(.bottomLeading)
+            VStack { compass; locate }.placed(.bottomTrailing)
         }
     }
     private func text(_ value: String, _ size: CGFloat = 18, color: Color? = nil, title: Bool = false) -> some View {

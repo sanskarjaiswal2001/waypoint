@@ -2,7 +2,7 @@ import Foundation
 
 /// Adapts the public OSRM-compatible endpoints to Ferrostar's banner and speech format.
 public enum RoutePreparation {
-    public static func prepare(_ data: Data, expectedOrigin: Coordinate? = nil, expectedDestination: Coordinate? = nil) throws -> Data {
+    public static func prepare(_ data: Data, expectedOrigin: Coordinate? = nil, expectedDestination: Coordinate? = nil, imperial: Bool = false) throws -> Data {
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               root["code"] as? String == "Ok",
               var route = (root["routes"] as? [[String: Any]])?.first,
@@ -40,7 +40,8 @@ public enum RoutePreparation {
             if (allSteps[index]["voiceInstructions"] as? [Any])?.isEmpty != false {
                 var voice = [[String: Any]]()
                 if distance > 210 {
-                    voice.append(["announcement": "In 180 metres, \(instruction)", "distanceAlongGeometry": 180.0])
+                    let distance = imperial ? "600 feet" : "180 metres"
+                    voice.append(["announcement": "In \(distance), \(instruction)", "distanceAlongGeometry": 180.0])
                 }
                 if distance > 45 {
                     voice.append(["announcement": instruction, "distanceAlongGeometry": 35.0])

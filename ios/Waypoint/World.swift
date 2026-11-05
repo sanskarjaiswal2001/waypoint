@@ -1,4 +1,14 @@
 import SwiftUI
+import WaypointKit
+
+struct VehicleLivery: Decodable, Hashable {
+    let car: String
+    let bike: String
+    let body: String
+    let trim: String
+    let pixel: Bool
+    let wire: Bool
+}
 
 struct World: Decodable, Identifiable, Hashable {
     let id: String
@@ -7,6 +17,8 @@ struct World: Decodable, Identifiable, Hashable {
     let accentHex: String
     let routeHex: String
     let groundHex: String
+    var vehicle: VehicleLivery? = nil
+    var voice: WorldVoice? = nil
 
     var accent: Color { Color(hex: accentHex) }
     var routeColor: UIColor { UIColor(hex: routeHex) }

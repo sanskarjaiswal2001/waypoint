@@ -113,7 +113,8 @@ public actor PlaceSearch {
     }
 
     public func search(_ query: String, near: Coordinate?, local: [Place] = [], expanded: Bool = false) async throws -> PlaceSearchResult {
-        guard query.count <= 256, near?.isValid != false else { throw ServiceError.invalidCoordinate }
+        guard query.count <= 256 else { throw ServiceError.invalidQuery }
+        guard near?.isValid != false else { throw ServiceError.invalidCoordinate }
         try Task.checkCancellation()
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return PlaceSearchResult(places: [], note: nil) }
         let effective = aliases.resolve(query)

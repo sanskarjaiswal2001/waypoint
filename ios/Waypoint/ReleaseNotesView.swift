@@ -17,7 +17,7 @@ struct ReleaseNotesView: View {
                     Text("Still being tested").font(.headline)
                     Text("Android parity is still in progress. Speech, wrong-turn recovery, arrival and locked-screen use need further device checks. CarPlay and a share extension are not included.")
                 }
-                Link("iOS releases", destination: URL(string: "https://github.com/sanskarjaiswal2001/waypoint/releases")!)
+                Link("iOS releases", destination: URL(string: "https://github.com/the-geeky-couldron/waypoint/releases")!)
                 Button("Explore map") { model.markReleaseNotesSeen(); dismiss() }.buttonStyle(.borderedProminent)
             }.frame(maxWidth: .infinity, alignment: .leading).padding(24)
         }

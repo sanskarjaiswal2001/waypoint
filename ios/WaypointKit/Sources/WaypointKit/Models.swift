@@ -40,6 +40,10 @@ public struct Place: Codable, Hashable, Identifiable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey { case id, name, address, coordinate, kind, source }
+    public func renamed(_ value: String) -> Self? {
+        guard let name = QuestBook.title(value, limit: 80) else { return nil }
+        return Self(id: id, name: name, address: address, coordinate: coordinate, kind: kind, source: source)
+    }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(String.self, forKey: .id)
@@ -52,12 +56,13 @@ public struct Place: Codable, Hashable, Identifiable, Sendable {
 }
 
 public enum TravelMode: String, CaseIterable, Codable, Sendable {
-    case car, motorcycle, walk
+    case car, motorcycle, bicycle, walk
 
     public var title: String {
         switch self {
         case .car: return "Car"
         case .motorcycle: return "Motorcycle"
+        case .bicycle: return "Bicycle"
         case .walk: return "Walk"
         }
     }
@@ -66,18 +71,20 @@ public enum TravelMode: String, CaseIterable, Codable, Sendable {
         switch self {
         case .car: return "auto"
         case .motorcycle: return "motorcycle"
+        case .bicycle: return "bicycle"
         case .walk: return "pedestrian"
         }
     }
 }
 
 public enum ServiceError: LocalizedError {
-    case invalidResponse, invalidCoordinate, noRoute, tooLarge, http(Int)
+    case invalidResponse, invalidCoordinate, invalidQuery, noRoute, tooLarge, http(Int)
 
     public var errorDescription: String? {
         switch self {
         case .invalidResponse: return "The map service returned an invalid response. Please try again."
         case .invalidCoordinate: return "A valid location is needed. Tap Locate and try again."
+        case .invalidQuery: return "Use a place name or address of up to 256 characters."
         case .noRoute: return "No route found for this travel mode. Try another destination."
         case .tooLarge: return "The response is too large. Try a shorter route or search."
         case .http(429): return "The map service is busy. Please try again shortly."

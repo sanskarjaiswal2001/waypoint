@@ -8,6 +8,7 @@ import WaypointKit
 
 struct RoutingProvider: CustomRouteProvider {
     let mode: TravelMode
+    var imperial = false
     var onFailure: (@Sendable () async -> Void)?
 
     func getRoutes(userLocation: UserLocation, waypoints: [Waypoint]) async throws -> [Route] {
@@ -17,7 +18,7 @@ struct RoutingProvider: CustomRouteProvider {
         do {
             data = try await MapService().routeData(
                 from: Coordinate(latitude: origin.lat, longitude: origin.lng),
-                to: Coordinate(latitude: destination.coordinate.lat, longitude: destination.coordinate.lng), mode: mode)
+                to: Coordinate(latitude: destination.coordinate.lat, longitude: destination.coordinate.lng), mode: mode, imperial: imperial)
         } catch {
             if !Task.isCancelled { await onFailure?() }
             throw error
@@ -66,6 +67,8 @@ final class NavigationModel: NSObject {
     var mapReloadRequest = UUID()
     var city = "Map preview"
     var pendingImport: NavigationImport?
+    var questPlaceDraft: Place?
+    let quests = QuestModel()
     var availableUpdate: IOSRelease?
     var updateStatus: String?
     var checkingUpdates = false
@@ -79,6 +82,9 @@ final class NavigationModel: NSObject {
             UserDefaults.standard.set(voiceEnabled, forKey: "voice")
             if navigating && muted == voiceEnabled { core?.spokenInstructionObserver.toggleMute(); muted = !voiceEnabled }
         }
+    }
+    var themedVoice = UserDefaults.standard.object(forKey: "themedVoice") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(themedVoice, forKey: "themedVoice") }
     }
     var favoriteWorlds = UserDefaults.standard.stringArray(forKey: "favoriteWorlds") ?? ["los_santos"] {
         didSet { UserDefaults.standard.set(favoriteWorlds, forKey: "favoriteWorlds") }
@@ -118,7 +124,7 @@ final class NavigationModel: NSObject {
     override init() {
         let defaults = UserDefaults.standard
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") {
+        if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") && !ProcessInfo.processInfo.arguments.contains("-waypoint-preserve-preferences") {
             for key in ["world", "onboarded", "saved", "recent", "mode", "releaseNotesSeen"] { defaults.removeObject(forKey: key) }
         }
         #endif
@@ -129,8 +135,9 @@ final class NavigationModel: NSObject {
         super.init()
         location.mode = mode
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") {
+        if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") && !ProcessInfo.processInfo.arguments.contains("-waypoint-preserve-preferences") {
             showWelcome = true
+            releaseNotesPending = true
             favoriteWorlds = ["los_santos"]
             imperial = false
             voiceEnabled = true
@@ -152,6 +159,13 @@ final class NavigationModel: NSObject {
                 self.stop()
             }
         }.store(in: &subscriptions)
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-waypoint-route-layout-fixture") {
+            showWelcome = false
+            releaseNotesPending = false
+            select(Place(id: "layout-fixture", name: String(repeating: "Example public demonstration destination ", count: 5), address: String(repeating: "Example address for layout testing. ", count: 12), coordinate: Coordinate(latitude: 51.5, longitude: -0.12)))
+        }
+        #endif
     }
 
     var coordinate: Coordinate? {
@@ -244,17 +258,17 @@ final class NavigationModel: NSObject {
         checkingUpdates = true
         defer { checkingUpdates = false }
         do {
-            var request = URLRequest(url: URL(string: "https://api.github.com/repos/sanskarjaiswal2001/waypoint/releases?per_page=50")!, timeoutInterval: 20)
+            var request = URLRequest(url: ProjectLinks.releaseAPI, timeoutInterval: 20)
             request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
             request.setValue("Waypoint-iOS", forHTTPHeaderField: "User-Agent")
             let (bytes, response) = try await URLSession.shared.bytes(for: request)
             guard let response = response as? HTTPURLResponse, response.statusCode == 200, response.expectedContentLength <= 2_000_000 else { throw ServiceError.invalidResponse }
             var data = Data()
             for try await byte in bytes { guard data.count < 2_000_000 else { throw ServiceError.tooLarge }; data.append(byte) }
-            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0"
+            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0"
             availableUpdate = try IOSRelease.newerRelease(in: data, currentVersion: version)
             lastUpdateCheck = Date()
-            updateStatus = availableUpdate.map { "Version \($0.version) is available." } ?? "You're using the latest iOS preview."
+            updateStatus = availableUpdate.map { "Version \($0.version) is available." } ?? "No newer upstream iOS preview found."
         } catch { if !quiet { updateStatus = "The update check failed. Try again later or open iOS releases." } }
     }
 
@@ -288,7 +302,7 @@ final class NavigationModel: NSObject {
         message = nil
         let id = UUID()
         requestID = id
-        let provider = RoutingProvider(mode: mode, onFailure: { [weak self] in
+        let provider = RoutingProvider(mode: mode, imperial: imperial, onFailure: { [weak self] in
             await self?.rerouteFailed(request: id)
         })
         let policy = GuidancePolicy(mode: mode)
@@ -300,8 +314,12 @@ final class NavigationModel: NSObject {
             routeDeviationTracking: .staticThreshold(minimumHorizontalAccuracy: policy.deviationAccuracy, maxAcceptableDeviation: policy.deviationDistance),
             snappedLocationCourseFiltering: .snapToRoute
         )
+        let speaker = WorldSpeechSynthesizer { [weak self] in
+            (self?.world ?? World.all[0], self?.navigation?.currentProgress?.distanceToNextManeuver ?? 0, self?.themedVoice ?? false)
+        }
         let engine = FerrostarCore(routeProvider: .customProvider(provider), locationProvider: location,
-                                  navigationControllerConfig: config, networkSession: URLSession.shared)
+                                  navigationControllerConfig: config, networkSession: URLSession.shared,
+                                  spokenInstructionObserver: SpokenInstructionObserver(synthesizer: speaker, isMuted: !voiceEnabled))
         engine.minimumTimeBeforeRecalculation = GuidancePolicy.recalculationDelay
         engine.minimumMovementBeforeRecalculation = GuidancePolicy.recalculationMovement
         engine.delegate = self
@@ -388,6 +406,13 @@ final class NavigationModel: NSObject {
     func toggleSaved(_ place: Place) {
         if saved.contains(where: { $0.id == place.id }) { saved.removeAll { $0.id == place.id } }
         else { saved = Array(([place] + saved).prefix(200)) }
+    }
+    func renameSaved(_ id: String, name: String) -> Bool {
+        guard let index = saved.firstIndex(where: { $0.id == id }), let place = saved[index].renamed(name) else { return false }
+        saved[index] = place
+        if destination?.id == id { destination = place }
+        recent = recent.map { $0.id == id ? place : $0 }
+        return true
     }
 
     func toggleMute() {

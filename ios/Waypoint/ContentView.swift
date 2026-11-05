@@ -2,7 +2,7 @@ import SwiftUI
 import WaypointKit
 
 private enum Panel: String, Identifiable {
-    case search, worlds, saved, settings, steps, whatsNew
+    case search, worlds, saved, settings, steps, whatsNew, quests
     var id: String { rawValue }
 }
 
@@ -17,17 +17,32 @@ struct ContentView: View {
         ZStack {
             WorldMap(model: model).ignoresSafeArea()
             if model.destination == nil && !model.navigating {
-                AtlasChrome(model: model, actions: AtlasActions(search: { query in searchQuery = query; panel = .search }, worlds: { panel = .worlds }, saved: { panel = .saved }, settings: { panel = .settings }))
+                AtlasChrome(model: model, actions: AtlasActions(search: { query in searchQuery = query; panel = .search }, worlds: { panel = .worlds }, saved: { panel = .saved }, settings: { panel = .settings }, quests: { panel = .quests }))
                 notices.padding(.horizontal, 16).padding(.top, 160).frame(maxHeight: .infinity, alignment: .top)
             } else {
                 GeometryReader { size in
                     if size.size.width > size.size.height && size.size.height < 500 {
                         HStack(alignment: .top, spacing: 12) {
                             VStack(spacing: 8) { routeHeader; if model.navigating { guidance }; notices; Spacer(minLength: 0); routeControls }
-                            if let destination = model.destination { ScrollView { destinationCard(destination) }.frame(width: min(340, size.size.width * 0.43)) }
+                            VStack(spacing: 10) {
+                                if let destination = model.destination { ScrollView { destinationDetails(destination) } }
+                                destinationActions
+                            }.frame(width: min(340, size.size.width * 0.43))
                         }.padding(12)
                     } else {
-                        VStack(spacing: 10) { routeHeader; if model.navigating { guidance }; notices; Spacer(minLength: 0); routeControls; if let destination = model.destination { destinationCard(destination) } }.padding(16)
+                        VStack(spacing: 10) {
+                            ScrollView {
+                                VStack(spacing: 10) {
+                                    routeHeader
+                                    if model.navigating { guidance }
+                                    notices
+                                    Spacer(minLength: 24)
+                                    routeControls
+                                    if let destination = model.destination { destinationDetails(destination) }
+                                }.frame(minHeight: max(0, size.size.height - 220), alignment: .top)
+                            }
+                            destinationActions.fixedSize(horizontal: false, vertical: true)
+                        }.padding(16)
                     }
                 }
             }
@@ -46,11 +61,13 @@ struct ContentView: View {
                 case .settings: SettingsView(model: model, replayIntroduction: { replayIntroPending = true; self.panel = nil })
                 case .steps: RouteStepsView(model: model)
                 case .whatsNew: NavigationStack { ReleaseNotesView(model: model) }
+                case .quests: QuestsView(model: model)
                 }
             }.tint(model.world.theme.accent).preferredColorScheme(["ctos","horizon"].contains(model.world.id) ? .light : .dark)
         }
         .fullScreenCover(isPresented: $model.showWelcome, onDismiss: { if model.pendingImport != nil { showImportConfirmation = true } }) { WelcomeView(model: model) }
         .onOpenURL { model.offerImport($0.absoluteString) }
+        .onChange(of: model.navigating) { _, navigating in if navigating && panel == .quests { panel = nil } }
         .onChange(of: model.pendingImport) { _, proposal in
             guard proposal != nil else { return }
             if panel != nil { panel = nil }
@@ -136,17 +153,22 @@ struct ContentView: View {
             }.padding(16).atlasPanel(model.world)
         }.buttonStyle(.plain).accessibilityLabel("\(model.instruction). Show route steps")
     }
-    private func destinationCard(_ place: Place) -> some View {
+    private func destinationDetails(_ place: Place) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             if !model.navigating {
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) { Text(place.name).font(model.world.font(24)); Text(place.address).font(.caption).foregroundStyle(model.world.theme.muted).lineLimit(2) }
+                    VStack(alignment: .leading, spacing: 4) { Text(place.name).font(model.world.font(24)); Text(place.address).font(.caption).foregroundStyle(model.world.theme.muted) }
                     Spacer(minLength: 0)
                     Button { model.toggleSaved(place) } label: { Image(systemName: model.saved.contains(where: { $0.id == place.id }) ? "bookmark.fill" : "bookmark").frame(width: 44, height: 44) }.accessibilityLabel("Save destination")
                     Button { model.clearDestination() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel("Clear destination")
                 }
-                Picker("Travel mode", selection: Binding(get: { model.mode }, set: model.changeMode)) { ForEach(TravelMode.allCases, id: \.self) { Text($0.title).tag($0) } }.pickerStyle(.segmented)
+                Picker("Travel mode", selection: Binding(get: { model.mode }, set: model.changeMode)) { ForEach(TravelMode.allCases, id: \.self) { Text($0.title).tag($0) } }.pickerStyle(.menu)
+                Button("Add a quest here") { model.questPlaceDraft = place; panel = .quests }
             }
+        }.padding(14).atlasPanel(model.world)
+    }
+    private var destinationActions: some View {
+        VStack(alignment: .leading, spacing: 12) {
             if model.route != nil {
                 HStack(spacing: 12) {
                     if model.navigating { Button { model.stop() } label: { Label("End trip", systemImage: "xmark").labelStyle(.iconOnly).frame(width: 44, height: 50) }.accessibilityLabel("End navigation") }

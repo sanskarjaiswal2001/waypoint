@@ -9,19 +9,24 @@ enum MapArtwork {
             if let image = SharedArt.image("poi_\(world.id)_\(kind)"), let cg = image.cgImage {
                 style.setImage(UIImage(cgImage: cg, scale: 4, orientation: .up), forName: "poi-\(kind)")
             } else {
-                style.setImage(education(world), forName: "poi-\(kind)")
+                style.setImage(kind == "education" ? education(world) : generatedPOI(kind, world), forName: "poi-\(kind)")
             }
         }
         style.setImage(player(world), forName: "nav-arrow")
         style.setImage(unknown(world), forName: "position-uncertain")
         style.setImage(destination(world), forName: "destination-marker")
+        if let livery = world.vehicle {
+            for (name, kind) in [("nav-car", livery.car), ("nav-motorcycle", livery.bike), ("nav-bicycle", "BICYCLE")] {
+                style.setImage(VehicleArtwork.image(livery, kind: kind), forName: name)
+            }
+        }
     }
     private static func ink(_ w: World) -> UIColor {
         if w.id == "saints" { return UIColor(hex: "FFDA45") }
         if w.id == "green_terminal" { return UIColor(hex: "A4F780") }
         if ["night_city","bridges","hyrule","starfield"].contains(w.id) { return UIColor(hex: "7DDDEC") }
         if ["rivia","lands_between","assassin","hogwarts"].contains(w.id) { return UIColor(hex: "ECD797") }
-        return .white
+        return UIColor(hex: w.theme.accentHex)
     }
     private static func render(_ width: CGFloat, _ height: CGFloat, draw: (CGContext) -> Void) -> UIImage {
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
@@ -71,6 +76,16 @@ enum MapArtwork {
         render(64, 64) { c in
             c.setFillColor(UIColor(hex: "141C1D").cgColor); c.fillEllipse(in: CGRect(x:5,y:5,width:54,height:54)); c.setStrokeColor(ink(w).cgColor); c.setLineWidth(2)
             c.strokeEllipse(in: CGRect(x:5,y:5,width:54,height:54)); c.move(to: CGPoint(x:13,y:25)); c.addLines(between: [CGPoint(x:32,y:16),CGPoint(x:51,y:25),CGPoint(x:32,y:34),CGPoint(x:13,y:25)]); c.move(to: CGPoint(x:21,y:30)); c.addLine(to: CGPoint(x:21,y:41)); c.addQuadCurve(to: CGPoint(x:43,y:41), control: CGPoint(x:32,y:49)); c.addLine(to: CGPoint(x:43,y:30)); c.move(to: CGPoint(x:51,y:25)); c.addLine(to: CGPoint(x:51,y:43)); c.strokePath()
+        }
+    }
+    private static func generatedPOI(_ kind: String, _ w: World) -> UIImage {
+        let symbols = ["place":"mappin", "food":"fork.knife", "cafe":"cup.and.saucer.fill", "pub":"wineglass.fill", "stay":"bed.double.fill", "fuel":"fuelpump.fill", "parking":"parkingsign", "shop":"bag.fill", "sights":"building.columns.fill", "health":"cross.case.fill", "nature":"leaf.fill", "cash":"banknote"]
+        return render(64, 64) { c in
+            let rect = CGRect(x: 5, y: 5, width: 54, height: 54)
+            let shape = ["sea_chart", "aincrad", "home_console"].contains(w.id) ? UIBezierPath(roundedRect: rect, cornerRadius: w.id == "sea_chart" ? 27 : 10) : UIBezierPath(rect: rect)
+            UIColor(hex: w.theme.panelHex).setFill(); shape.fill(); ink(w).setStroke(); shape.lineWidth = 3; shape.stroke()
+            UIImage(systemName: symbols[kind] ?? "mappin", withConfiguration: UIImage.SymbolConfiguration(pointSize: 28, weight: .semibold))?.withTintColor(ink(w), renderingMode: .alwaysOriginal).draw(in: CGRect(x: 17, y: 17, width: 30, height: 30))
+            if ["dos_atlas", "retro_quest"].contains(w.id) { c.setShouldAntialias(false); c.setStrokeColor(ink(w).cgColor); c.stroke(CGRect(x: 10, y: 10, width: 44, height: 44)) }
         }
     }
 }

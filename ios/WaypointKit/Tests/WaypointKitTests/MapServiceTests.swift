@@ -10,7 +10,7 @@ final class MapServiceTests: XCTestCase {
         let car = try MapService.routeURL(from: origin, to: destination, mode: .car)
         XCTAssertEqual(car.host, "router.project-osrm.org")
         XCTAssertTrue(car.path.contains("/driving/10.0,50.0;10.01,50.01"))
-        for mode in [TravelMode.motorcycle, .walk] {
+        for mode in [TravelMode.motorcycle, .bicycle, .walk] {
             let url = try MapService.routeURL(from: origin, to: destination, mode: mode)
             XCTAssertEqual(url.host, "valhalla1.openstreetmap.de")
             let json = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first?.value)
@@ -72,6 +72,16 @@ final class MapServiceTests: XCTestCase {
         let route = try XCTUnwrap(JSONSerialization.jsonObject(with: prepared) as? [String: Any])
         let steps = try XCTUnwrap((route["legs"] as? [[String: Any]])?.first?["steps"] as? [[String: Any]])
         XCTAssertEqual((steps[0]["voiceInstructions"] as? [[String: Any]])?.first?["announcement"] as? String, "Provider instruction")
+    }
+    func testGeneratedSpeechRespectsImperialUnitsWithoutChangingTriggerDistance() throws {
+        for (imperial, phrase) in [(false, "In 180 metres"), (true, "In 600 feet")] {
+            let prepared = try RoutePreparation.prepare(response(), imperial: imperial)
+            let route = try XCTUnwrap(JSONSerialization.jsonObject(with: prepared) as? [String: Any])
+            let steps = try XCTUnwrap((route["legs"] as? [[String: Any]])?.first?["steps"] as? [[String: Any]])
+            let voices = try XCTUnwrap(steps[0]["voiceInstructions"] as? [[String: Any]])
+            XCTAssertTrue((voices[0]["announcement"] as? String)?.hasPrefix(phrase) == true)
+            XCTAssertEqual(voices[0]["distanceAlongGeometry"] as? Double, 180)
+        }
     }
 
     func testNoRouteAndInvalidGeometryCannotBeNavigated() throws {

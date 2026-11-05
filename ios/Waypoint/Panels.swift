@@ -10,11 +10,12 @@ struct SearchView: View {
     @State private var loading = false
     @State private var error: String?
     @State private var expanded = false
+    @State private var searchAttempt = 0
     init(model: NavigationModel, initialQuery: String = "") { self.model = model; _query = State(initialValue: initialQuery) }
     var body: some View {
         NavigationStack {
             List {
-                Picker("Travel mode", selection: Binding(get: { model.mode }, set: model.changeMode)) { ForEach(TravelMode.allCases, id: \.self) { Text($0.title).tag($0) } }.pickerStyle(.segmented)
+                Picker("Travel mode", selection: Binding(get: { model.mode }, set: model.changeMode)) { ForEach(TravelMode.allCases, id: \.self) { Text($0.title).tag($0) } }.pickerStyle(.menu)
                 if query.isEmpty {
                     Section("Nearby") { HStack { ForEach(["Coffee","Food","Fuel","Parking"], id: \.self) { value in Button(value) { query = value }.buttonStyle(.bordered) } } }
                 }
@@ -35,12 +36,13 @@ struct SearchView: View {
                     ContentUnavailableView(query.isEmpty ? "Where to?" : "No places found", systemImage: "magnifyingglass", description: Text(query.isEmpty ? "Search for a place or address, or hold the map to drop a pin." : "Try a different name or a nearby town."))
                 }
                 if !query.isEmpty && !loading && NavigationImport.parse(query) == nil {
-                    Button("Search more providers") { expanded.toggle() }
+                    Button("Search more providers") { expanded = true; searchAttempt += 1 }
                 }
                 Section { Text("Your query and nearby search area go to Photon. If it finds no strong match, Apple geocoding checks the address too. Saved and recent places are matched on this device.").font(.caption).foregroundStyle(.secondary) }
             }.navigationTitle("Search places").searchable(text: $query, prompt: "Place or address")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-                .task(id: "\(query):\(expanded)") {
+                .onChange(of: query) { _, _ in expanded = false }
+                .task(id: "\(query):\(expanded):\(searchAttempt)") {
                     results = []; error = nil; loading = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     guard loading else { return }
                     if NavigationImport.parse(query) != nil { loading = false; return }
@@ -67,7 +69,9 @@ struct WorldsView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 155), spacing: 12)], spacing: 12) {
                     ForEach(worlds) { world in
                         VStack(alignment: .leading, spacing: 0) {
-                            Button { model.world = world; dismiss() } label: { WorldCard(world: world, selected: model.world.id == world.id) }.buttonStyle(.plain).accessibilityLabel("\(world.title)\(model.world.id == world.id ? ", selected" : "")")
+                            Button { model.world = world; dismiss() } label: { WorldCard(world: world, selected: model.world.id == world.id) }.buttonStyle(.plain)
+                                .accessibilityLabel("\(world.title), \(world.inspiration)")
+                                .accessibilityAddTraits(model.world.id == world.id ? [.isSelected] : [])
                             Button { model.toggleFavorite(world) } label: { Label(model.favoriteWorlds.contains(world.id) ? "Favourite" : "Add favourite", systemImage: model.favoriteWorlds.contains(world.id) ? "star.fill" : "star").font(.caption).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.plain)
                         }.atlasPanel(world)
                     }
@@ -102,13 +106,23 @@ struct WorldCard: View {
 struct PlacesView: View {
     @Bindable var model: NavigationModel
     @Environment(\.dismiss) private var dismiss
+    @State private var renaming: Place?
+    @State private var name = ""
     var body: some View {
         NavigationStack {
             List {
                 if model.saved.isEmpty && model.recent.isEmpty { ContentUnavailableView("Your places", systemImage: "bookmark", description: Text("Save a destination with the bookmark button. Recent destinations appear after you start navigation.")) }
-                Section("Saved") { ForEach(model.saved) { place in row(place) }.onDelete { model.saved.remove(atOffsets: $0) } }
+                Section("Saved") { ForEach(model.saved) { place in
+                    row(place).swipeActions(edge: .leading) { Button("Rename") { name = place.name; renaming = place } }
+                        .contextMenu { Button("Rename") { name = place.name; renaming = place } }
+                }.onDelete { model.saved.remove(atOffsets: $0) } }
                 Section("Recent") { ForEach(model.recent) { place in row(place) }.onDelete { model.recent.remove(atOffsets: $0) } }
             }.navigationTitle("Your places").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+                .alert("Name this place", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+                    TextField("Place name", text: $name)
+                    Button("Save name") { if let place = renaming { _ = model.renameSaved(place.id, name: name) }; renaming = nil }.disabled(renaming?.renamed(name) == nil)
+                    Button("Cancel", role: .cancel) { renaming = nil }
+                } message: { Text("Choose a name of up to 80 characters. The location stays the same.") }
         }
     }
     private func row(_ place: Place) -> some View {
@@ -145,6 +159,7 @@ struct SettingsView: View {
             List {
                 Section("Navigation") {
                     Toggle("Spoken directions", isOn: $model.voiceEnabled)
+                    Toggle("World-themed voice", isOn: $model.themedVoice)
                     Toggle("Miles and feet", isOn: $model.imperial)
                     Toggle("3D perspective", isOn: $model.tilted)
                     Picker("Travel mode", selection: Binding(get: { model.mode }, set: model.changeMode)) { ForEach(TravelMode.allCases, id: \.self) { Text($0.title).tag($0) } }.disabled(model.navigating)
@@ -172,9 +187,9 @@ struct SettingsView: View {
                     Button(model.checkingUpdates ? "Checking…" : "Check for updates") { Task { await model.checkForUpdate() } }.disabled(model.checkingUpdates || model.navigating)
                     if let status = model.updateStatus { Text(status).font(.footnote) }
                     if let update = model.availableUpdate { Link("Review version \(update.version)", destination: update.url) }
-                    Link("iOS releases and updates", destination: URL(string: "https://github.com/sanskarjaiswal2001/waypoint/releases")!)
+                    Link("iOS releases and updates", destination: URL(string: "https://github.com/the-geeky-couldron/waypoint/releases")!)
                     Text("Install updates through the same LiveContainer or signing app to preserve your saved places.").font(.footnote).foregroundStyle(.secondary)
-                    Link("iOS build and installation guide", destination: URL(string: "https://github.com/sanskarjaiswal2001/waypoint/blob/ios-v0.2.0/ios/README.md")!)
+                    Link("iOS build and installation guide", destination: URL(string: "https://github.com/the-geeky-couldron/waypoint/blob/main/ios/README.md")!)
                 }
                 Section("Location and privacy") {
                     Text("Search queries and an optional nearby position go to Photon, with Apple geocoding as an address fallback. Route endpoints go to OSRM or Valhalla. Tiles and terrain come from OpenFreeMap and Mapzen. Core Location reverse geocoding supplies the current city label. There is no account or analytics service. Saved and recent destinations stay on this device.").font(.footnote)
@@ -201,7 +216,7 @@ struct FeedbackView: View {
     private var issueURL: URL? {
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-        var url = URLComponents(string: "https://github.com/sanskarjaiswal2001/waypoint/issues/new")!
+        var url = URLComponents(string: "https://github.com/the-geeky-couldron/waypoint/issues/new")!
         url.queryItems = [URLQueryItem(name: "title", value: String(title.prefix(160))), URLQueryItem(name: "body", value: "### My feedback\n\n\(details.prefix(4000))\n\n### App context\n\n- Type: \(kind)\n- World: \(world.title)\n- Waypoint iOS version: \(version)")]
         guard let result = url.url, result.absoluteString.count <= 6500 else { return nil }; return result
     }

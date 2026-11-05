@@ -17,9 +17,9 @@ public struct MapService: Sendable {
         return try Self.decodePlaces(await fetch(components.url!, limit: 2 * 1024 * 1024, timeout: 9))
     }
 
-    public func routeData(from: Coordinate, to: Coordinate, mode: TravelMode) async throws -> Data {
+    public func routeData(from: Coordinate, to: Coordinate, mode: TravelMode, imperial: Bool = false) async throws -> Data {
         let url = try Self.routeURL(from: from, to: to, mode: mode)
-        return try RoutePreparation.prepare(await fetch(url, limit: 8 * 1024 * 1024), expectedOrigin: from, expectedDestination: to)
+        return try RoutePreparation.prepare(await fetch(url, limit: 8 * 1024 * 1024), expectedOrigin: from, expectedDestination: to, imperial: imperial)
     }
 
     public static func routeURL(from: Coordinate, to: Coordinate, mode: TravelMode) throws -> URL {
