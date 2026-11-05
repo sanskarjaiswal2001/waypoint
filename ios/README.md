@@ -6,7 +6,7 @@ A native SwiftUI port for iPhone and iPad on iOS 17 or later. The 0.3.0 branch f
 
 The source includes themed phone HUDs, POI layers, onboarding, search, route controls, saved places and preferences. Read the [feature comparison](PARITY.md) for partial implementations and missing Android behaviours. The [validation record](VALIDATION.md) lists completed checks and tests that still need to run.
 
-This is an experimental preview. Navigation is reported working through LiveContainer, and [device screenshots](../docs/images/ios/README.md) show the Night City and Los Santos phone UI. GPS edge cases, speech and background guidance still need repeatable device checks. CarPlay, Android's APK installer and satellite counts are outside this port. The GitHub README's promotional artwork shows Android; its iOS section contains the device screenshots.
+This is an experimental preview. Navigation was reported working through LiveContainer on 0.2.0, and [device screenshots](../docs/images/ios/README.md) show the Night City and Los Santos phone UI. GPS edge cases, speech and background guidance still need repeatable device checks. CarPlay, Android's APK installer and satellite counts are outside this port. The GitHub README's promotional artwork shows Android; its iOS section contains the device screenshots.
 
 ## Install through SideStore or AltStore Classic
 

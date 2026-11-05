@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from ios_catalogue import read_worlds, validate_worlds, typefaces
+from ios_catalogue import read_worlds, validate_worlds, typefaces, palettes
 
 
 class CatalogueTests(unittest.TestCase):
@@ -11,7 +11,9 @@ class CatalogueTests(unittest.TestCase):
         worlds = read_worlds((self.root / "app/src/main/java/com/waypoint/app/World.kt").read_text())
         validate_worlds(self.root, worlds)
         typefaces(self.root, worlds)
+        palettes(self.root, worlds)
         self.assertTrue(all(w.get("titleTypeface") and w.get("readingTypeface") for w in worlds))
+        self.assertTrue(all(len(w["hudPalette"]["panelHex"]) == 6 for w in worlds))
         self.assertTrue({"division", "nier", "stalker"}.issubset({w["id"] for w in worlds}))
 
     def test_new_world_is_parsed_without_changing_a_count(self):
@@ -23,6 +25,7 @@ class CatalogueTests(unittest.TestCase):
         source = 'EXAMPLE("Example","Example world",R.string.example,"example",Color(0xFFAABBCC),"#DDEEFF",Color(0xFF112233)),\n'
         with self.assertRaises(ValueError): read_worlds(source + 'ANOTHER("different constructor")\n')
         with self.assertRaises(ValueError): read_worlds(source + source.replace("EXAMPLE", "ANOTHER"))
+        with self.assertRaises(ValueError): read_worlds(source.replace('"example"', '"../example"'))
 
     def test_missing_assets_and_missing_native_layout_fail(self):
         with tempfile.TemporaryDirectory() as directory:

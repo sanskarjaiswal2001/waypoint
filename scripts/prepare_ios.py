@@ -8,7 +8,7 @@ import re
 import shutil
 import subprocess
 from ios_cartography import add_discovery_layers
-from ios_catalogue import read_worlds, validate_worlds, typefaces
+from ios_catalogue import read_worlds, validate_worlds, typefaces, palettes
 from ios_fonts import normalize_stratum
 
 
@@ -26,6 +26,7 @@ source = (ROOT / "app/src/main/java/com/waypoint/app/World.kt").read_text()
 worlds = read_worlds(source)
 validate_worlds(ROOT, worlds)
 typefaces(ROOT, worlds)
+palettes(ROOT, worlds)
 cartography = (ROOT / "app/src/main/java/com/waypoint/app/Cartography.kt").read_text()
 map_art = {name: dict(tilt=float(tilt), zoom=float(zoom), routeWidth=float(width), poiScale=float(scale), marker=marker, player=player, lightLabels=light == "true")
            for name, tilt, zoom, width, scale, marker, player, light in re.findall(

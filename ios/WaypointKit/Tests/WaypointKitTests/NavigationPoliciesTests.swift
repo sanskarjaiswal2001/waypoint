@@ -93,4 +93,13 @@ final class NavigationPoliciesTests: XCTestCase {
         XCTAssertFalse(AppPreferences.shouldShowRelease(release, in: defaults))
         XCTAssertTrue(AppPreferences.shouldShowRelease(AppPreferences.releaseID(version: "0.3.0", build: "7"), in: defaults))
     }
+    func testFreshInstallSkipsNotesWhileAnUpgradeKeepsThemPending() throws {
+        let name = "WaypointTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        XCTAssertFalse(AppPreferences.prepareReleaseNotice("0.3.0.6", existingInstall: false, in: defaults))
+        defaults.set("0.2.0.5", forKey: "releaseNotesSeen")
+        XCTAssertTrue(AppPreferences.prepareReleaseNotice("0.3.0.6", existingInstall: true, in: defaults))
+        XCTAssertEqual(defaults.string(forKey: "releaseNotesSeen"), "0.2.0.5")
+    }
 }

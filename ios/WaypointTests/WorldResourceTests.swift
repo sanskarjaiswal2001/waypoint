@@ -12,6 +12,7 @@ final class WorldResourceTests: XCTestCase {
             XCTAssertNotNil(SharedArt.image("art_\(world.id)"), world.id)
             XCTAssertNotNil(world.vehicle, world.id)
             XCTAssertNotNil(world.mapArt, world.id)
+            XCTAssertNotNil(world.hudPalette, world.id)
             let voice = try XCTUnwrap(world.voice, world.id)
             XCTAssertEqual(voice.openings.count, 3, world.id)
             XCTAssertEqual(voice.cues.count, 3, world.id)

@@ -5,7 +5,19 @@ on:
     branches: [main, ios-port]
     tags: ['ios-v*']
   pull_request:
-    paths: ['ios/**', 'scripts/*ios*', 'app/src/main/assets/**', 'app/src/main/java/com/waypoint/app/World.kt', '.github/workflows/ios.yml']
+    paths:
+      - 'ios/**'
+      - 'scripts/*ios*'
+      - 'app/src/main/assets/**'
+      - 'app/src/main/res/**'
+      - 'app/src/main/java/com/waypoint/app/World.kt'
+      - 'app/src/main/java/com/waypoint/app/WorldTypography.kt'
+      - 'app/src/main/java/com/waypoint/app/WorldVoice*.kt'
+      - 'app/src/main/java/com/waypoint/app/VehicleMarkers.kt'
+      - 'app/src/main/java/com/waypoint/app/Cartography.kt'
+      - 'app/src/main/java/com/waypoint/app/GameHud.kt'
+      - 'docs/licenses/**'
+      - '.github/workflows/ios.yml'
   workflow_dispatch:
     inputs:
       runner:

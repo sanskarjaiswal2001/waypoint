@@ -17,9 +17,8 @@ final class WaypointUITests: XCTestCase {
         app.buttons["Continue"].tap()
         app.buttons["Continue"].tap()
         app.buttons["Open map"].tap()
-        XCTAssertTrue(app.buttons["Explore map"].waitForExistence(timeout: 5))
-        app.buttons["Explore map"].tap()
         XCTAssertTrue(app.buttons["Worlds"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Explore map"].exists)
         app.buttons["Worlds"].tap()
         let oldWest = app.buttons["OLD WEST, Red Dead Redemption 2"]
         XCTAssertTrue(oldWest.waitForExistence(timeout: 5))
@@ -94,10 +93,25 @@ final class WaypointUITests: XCTestCase {
         app.launchArguments += ["-waypoint-preserve-preferences"]
         app.launch()
         app.buttons["Saved"].tap()
-        XCTAssertTrue(app.staticTexts["Example work"].waitForExistence(timeout: 5))
+        let renamed = app.buttons["place-public-museum"]
+        XCTAssertTrue(renamed.waitForExistence(timeout: 5))
+        XCTAssertTrue(renamed.label.contains("Example work"))
         app.buttons["Done"].tap()
         app.buttons["Quests"].tap()
         XCTAssertTrue(app.staticTexts["Example task"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Complete quest"].exists)
+    }
+    func testUpgradeNotesAppearOnceAndStayDismissedAfterRelaunch() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-waypoint-ui-testing", "-waypoint-upgrade-fixture"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["What's new"].waitForExistence(timeout: 15))
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["Quests"].waitForExistence(timeout: 10))
+        app.terminate()
+        app.launchArguments += ["-waypoint-preserve-preferences"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Quests"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.navigationBars["What's new"].exists)
     }
 }

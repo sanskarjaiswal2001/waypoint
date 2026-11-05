@@ -4,7 +4,7 @@ This record covers the 0.3.0 contribution branch, compared with upstream Android
 
 ## Checks completed locally
 
-- All 66 `WaypointKit` XCTest cases pass. They cover routing profiles including Bicycle, bounded response/geometry validation, imperial speech, themed voice rules, font transport, GPS retry, heading/follow policies, imported-destination parsing and redirect limits, upstream release selection, saved-place naming and quest rewards/timers/persistence.
+- All 67 `WaypointKit` XCTest cases pass. They cover routing profiles including Bicycle, bounded response/geometry validation, imperial speech, themed voice rules, font transport, GPS retry, heading/follow policies, imported-destination parsing and redirect limits, upstream release selection, saved-place naming and quest rewards/timers/persistence.
 - The unsigned arm64 device app builds with xtool 1.24.0 and Swift Build, using Command Line Tools and the iOS SDK from a user-folder Xcode installation.
 - All 39 staged iOS styles pass the official MapLibre style validator, including the base style and all 38 world styles with their added discovery layers.
 - Five catalogue/font staging tests pass. They cover catalogue expansion, changed constructors, duplicate IDs, missing assets/HUDs and name-only Stratum normalization. No fixed count limits the catalogue. Font tests confirm glyph and licence tables are unchanged.
@@ -19,11 +19,13 @@ On 5 November 2026, the device tester reported navigation working on an iPhone i
 
 The reported device is an iPhone 18 Pro on iOS 27.0.1, using LiveContainer. Its host version was not supplied. This is a user report without a recorded route or test checklist. The screenshots show destination selection rather than active guidance. They do not establish spoken output, rerouting, arrival, background use or full Android parity. No current-location capture was supplied. The 0.3.0 device checks remain pending.
 
-## Tests still to run
+## Native CI and remaining checks
 
 [NavigationContractTests.swift](WaypointTests/NavigationContractTests.swift) tests prepared route data against the actual Ferrostar parser. [WorldResourceTests.swift](WaypointTests/WorldResourceTests.swift) checks fonts, artwork and transport image bounds. [WaypointUITests.swift](WaypointUITests/WaypointUITests.swift) covers onboarding, world selection, main panels, large-text route controls, Quests, saved-place renaming and relaunch persistence. These cannot run in the current local toolchain; native CI results must be recorded against the tested revision.
 
-The earlier fork CI runs failed while waiting for an ARM runner. The workflow now uses the available Intel runner by default. A first Intel run reached the compiler and exposed a compass type-check timeout, which was fixed by splitting the view and drawing code. These failed or incomplete runs are not passing test evidence.
+Fork CI run [41977618068](https://github.com/sanskarjaiswal2001/waypoint/actions/runs/41977618068), at revision `61e63a5`, passed the full workflow: 66 core tests, five staging tests, the unsigned device build/package check, four native parser/resource tests and three simulator UI tests. The UI flows covered onboarding/world selection/main panels, large-text route actions, and Quests completion/Undo plus saved-place rename across relaunch. Later changes add the fresh-install/upgrade release-notice rule and staged HUD palettes; that passing run does not verify those changes. Results for subsequent revisions are recorded in [PR #13](https://github.com/the-geeky-couldron/waypoint/pull/13).
+
+Earlier runs failed while waiting for an ARM runner, at a compass type-check timeout, or at a version-row UI selector. The workflow now uses an Intel runner, and the compiler/selector failures were corrected. Those failed runs are retained as history, not passing evidence.
 
 Repeatable device checks are still needed for route guidance, speech interruptions, rerouting, arrival, map gestures, shared-link confirmation, saved-place persistence, locked-screen use and installer refresh. Use synthetic fixtures or fixed public landmarks. Do not publish personal routes, coordinates, device identifiers or unredacted captures.
 

@@ -84,5 +84,9 @@ public enum AppPreferences {
     public static func shouldShowRelease(_ release: String, in defaults: UserDefaults) -> Bool {
         defaults.string(forKey: "releaseNotesSeen") != release
     }
+    public static func prepareReleaseNotice(_ release: String, existingInstall: Bool, in defaults: UserDefaults) -> Bool {
+        if !existingInstall && defaults.object(forKey: "releaseNotesSeen") == nil { markReleaseSeen(release, in: defaults) }
+        return shouldShowRelease(release, in: defaults)
+    }
     public static func markReleaseSeen(_ release: String, in defaults: UserDefaults) { defaults.set(release, forKey: "releaseNotesSeen") }
 }

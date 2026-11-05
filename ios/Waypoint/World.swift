@@ -31,6 +31,7 @@ struct World: Decodable, Identifiable, Hashable {
     var titleTypeface: String? = nil
     var readingTypeface: String? = nil
     var mapArt: MapArt? = nil
+    var hudPalette: WorldTheme? = nil
 
     var accent: Color { Color(hex: accentHex) }
     var routeColor: UIColor { UIColor(hex: routeHex) }

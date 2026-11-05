@@ -108,7 +108,7 @@ final class NavigationModel: NSObject {
         AppPreferences.releaseID(version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0",
                                  build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "6")
     }
-    var releaseNotesPending = AppPreferences.shouldShowRelease(NavigationModel.releaseID, in: .standard)
+    var releaseNotesPending = false
     func markReleaseNotesSeen() {
         AppPreferences.markReleaseSeen(Self.releaseID, in: .standard)
         releaseNotesPending = false
@@ -127,9 +127,14 @@ final class NavigationModel: NSObject {
         let defaults = UserDefaults.standard
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") && !ProcessInfo.processInfo.arguments.contains("-waypoint-preserve-preferences") {
-            for key in ["world", "onboarded", "saved", "recent", "mode", "releaseNotesSeen"] { defaults.removeObject(forKey: key) }
+            for key in ["world", "onboarded", "saved", "recent", "mode", "releaseNotesSeen", "favoriteWorlds", "voice", "themedVoice", "imperial", "tilted", "referral", "searchAliases", "lastUpdateCheck"] { defaults.removeObject(forKey: key) }
+            if ProcessInfo.processInfo.arguments.contains("-waypoint-upgrade-fixture") {
+                defaults.set(true, forKey: "onboarded")
+                defaults.set("0.2.0.5", forKey: "releaseNotesSeen")
+            }
         }
         #endif
+        let existingInstall = ["world", "onboarded", "saved", "recent", "mode", "favoriteWorlds", "voice", "themedVoice", "imperial", "tilted", "referral", "searchAliases", "lastUpdateCheck", "releaseNotesSeen"].contains { defaults.object(forKey: $0) != nil }
         world = World.all.first { $0.id == defaults.string(forKey: "world") } ?? World.all[0]
         saved = Self.restore("saved")
         recent = Self.restore("recent")
@@ -138,8 +143,7 @@ final class NavigationModel: NSObject {
         location.mode = mode
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-waypoint-ui-testing") && !ProcessInfo.processInfo.arguments.contains("-waypoint-preserve-preferences") {
-            showWelcome = true
-            releaseNotesPending = true
+            showWelcome = !defaults.bool(forKey: "onboarded")
             favoriteWorlds = ["los_santos"]
             imperial = false
             voiceEnabled = true
@@ -147,6 +151,7 @@ final class NavigationModel: NSObject {
             defaults.removeObject(forKey: "tilted")
         }
         #endif
+        releaseNotesPending = AppPreferences.prepareReleaseNotice(Self.releaseID, existingInstall: existingInstall, in: defaults)
         location.$fix.receive(on: DispatchQueue.main).sink { [weak self] in
             if self?.fix == nil && $0 != nil { self?.cameraRequest = UUID() }
             self?.fix = $0

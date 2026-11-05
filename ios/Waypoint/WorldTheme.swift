@@ -2,12 +2,13 @@ import CoreText
 import SwiftUI
 
 /// The phone palette and typography shared with the Android world HUDs.
-struct WorldTheme {
+struct WorldTheme: Decodable, Hashable {
     let panelHex: String
     let foregroundHex: String
     let accentHex: String
     let mutedHex: String
-    var panel: Color { Color(hex: panelHex).opacity(0.96) }
+    var panelOpacity: Double? = nil
+    var panel: Color { Color(hex: panelHex).opacity(panelOpacity ?? 0.96) }
     var foreground: Color { Color(hex: foregroundHex) }
     var accent: Color { Color(hex: accentHex) }
     var muted: Color { Color(hex: mutedHex) }
@@ -43,6 +44,7 @@ enum SharedArt {
 
 extension World {
     var theme: WorldTheme {
+        if let hudPalette { return hudPalette }
         let values: [String]
         switch id {
         case "nier": values = ["D8D4BC", "35362E", "793D2B", "5D5C4D"]
@@ -134,7 +136,10 @@ extension World {
         }
     }
     func font(_ size: CGFloat, title: Bool = false) -> Font { SharedArt.font(title ? titleFontFile : hudFontFile, size) }
-    var lightInterface: Bool { ["ctos", "horizon", "sea_chart", "aincrad", "home_console", "nier"].contains(id) }
+    var lightInterface: Bool {
+        let rgb = UInt32(theme.foregroundHex, radix: 16) ?? 0xFFFFFF
+        return (0.2126 * Double((rgb >> 16) & 255) + 0.7152 * Double((rgb >> 8) & 255) + 0.0722 * Double(rgb & 255)) / 255 < 0.45
+    }
     var artZoom: Double { mapArt?.zoom ?? 16 }
     var artTilt: Double { let tilt = mapArt?.tilt ?? 0; return tilt > 0 ? tilt : 45 }
     var defaultTilted: Bool { (mapArt?.tilt ?? 0) > 0 }
