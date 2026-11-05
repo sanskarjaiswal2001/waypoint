@@ -149,13 +149,13 @@ Android Auto keeps Google Maps available in the launcher. Open Waypoint there to
 
 ## iOS port (work in progress)
 
-An iPhone/iPad port is being developed in [`ios/`](ios/README.md) for iOS 17 or later. It has implementations of the 27 themed phone HUDs, shared map assets, search and navigation controls. Android feature parity is still being checked, and several behaviours need device testing.
+An iPhone/iPad port is being developed in [`ios/`](ios/README.md) for iOS 17 or later. The 0.3.0 branch follows Android 2.0.1 with 38 themed phone HUDs, Bicycle routing, saved-place renaming and local Quests. Android feature parity is still being checked, and the remaining device checks are listed in the validation record.
 
 Progress and remaining work are tracked in [issue #12](https://github.com/the-geeky-couldron/waypoint/issues/12).
 
-Unsigned [iOS preview builds](https://github.com/sanskarjaiswal2001/waypoint/releases) are currently published on the contributor's fork for installation through LiveContainer, SideStore or AltStore Classic. Read the [feature comparison](ios/PARITY.md) and [iOS validation record](ios/VALIDATION.md) for known gaps and tests that have run. The promotional screenshots above show Android.
+Unsigned [contribution preview builds](https://github.com/sanskarjaiswal2001/waypoint/releases) are available on the contributor's fork for installation through LiveContainer, SideStore or AltStore Classic. The app's update check and feedback form use the upstream repository; fork previews are separate downloads. Upstream iOS builds use the `ios-v*` release channel. Read the [feature comparison](ios/PARITY.md) and [iOS validation record](ios/VALIDATION.md) for known gaps and tests that have run. The promotional screenshots above show Android.
 
-Navigation is reported working on an iPhone through LiveContainer. These device screenshots show selected destinations in Night City and Los Santos:
+Navigation was reported working on an iPhone through LiveContainer with the 0.2.0 preview. These device screenshots show selected destinations in Night City and Los Santos; the 0.3.0 changes still need device verification:
 
 <p align="center">
   <img src="docs/images/ios/night-city-apple-valley.png" width="30%" alt="iOS Night City map with Apple Valley selected and route preview controls." />

@@ -63,6 +63,17 @@ final class QuestsTests: XCTestCase {
         var changed = first; changed.focusMinutes = 10
         XCTAssertThrowsError(try book.save(changed))
     }
+    func testEditingDurationAfterShortFocusCannotIncreaseEarnedCredit() throws {
+        var book = QuestBook(); let short = Quest(title: "Short", focusMinutes: 1), next = Quest(title: "Next")
+        try book.save(short); try book.save(next)
+        _ = book.startFocus(short.id, uptime: 0, now: now, bootID: "boot")
+        book.finishFocus(confirm: true, uptime: 60, now: now, bootID: "boot")
+        _ = book.startFocus(next.id, uptime: 61, now: now, bootID: "boot")
+        var changed = try XCTUnwrap(book.quests.first(where: { $0.id == short.id }))
+        changed.focusMinutes = 25; changed.focusCreditMinutes = 25
+        try book.save(changed); book.complete(short.id)
+        XCTAssertEqual(book.xp, 20)
+    }
     func testRestoredTimerAfterRebootNeedsConfirmationForCredit() throws {
         var book = QuestBook(); let quest = Quest(title: "Restored", focusMinutes: 10)
         try book.save(quest); _ = book.startFocus(quest.id, uptime: 100, now: now, bootID: "before")

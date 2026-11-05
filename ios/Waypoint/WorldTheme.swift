@@ -135,10 +135,10 @@ extension World {
     }
     func font(_ size: CGFloat, title: Bool = false) -> Font { SharedArt.font(title ? titleFontFile : hudFontFile, size) }
     var lightInterface: Bool { ["ctos", "horizon", "sea_chart", "aincrad", "home_console", "nier"].contains(id) }
-    var artZoom: Double { ["los_santos":16.2,"old_west":16,"night_city":16.2,"pixel":17,"green_terminal":16.1,"san_andreas":16,"heat":15.8,"rivia":15.6,"vice_coast":16,"liberty":16.1,"ctos":16,"hyrule":15.7,"skyrim":15.5,"lands_between":15.6,"horizon":15.9,"assassin":15.6,"far_cry":15.7,"ghost":15.6,"bridges":15.7,"horizon_wilds":15.6,"spider":16.1,"hogwarts":15.5,"starfield":15.9,"kingdom":15.6,"saints":16,"just_cause":15.6,"mafia":16][id] ?? 16 }
-    var artTilt: Double { ["night_city":45,"pixel":42,"skyrim":35,"far_cry":30,"bridges":25,"spider":40,"hogwarts":25,"starfield":30][id] ?? 45 }
-    var defaultTilted: Bool { ["night_city","pixel","skyrim","far_cry","bridges","spider","hogwarts","starfield"].contains(id) }
-    var routeWidth: Double { ["los_santos":5,"old_west":3.8,"night_city":3.8,"pixel":5,"green_terminal":3,"san_andreas":5,"heat":4.5,"rivia":3,"vice_coast":5,"liberty":4.5,"ctos":4,"hyrule":2.5,"skyrim":2,"lands_between":2.5,"horizon":4.5,"assassin":2.5,"far_cry":3.5,"ghost":2.5,"bridges":2.5,"horizon_wilds":3,"spider":4,"hogwarts":2.5,"starfield":2.5,"kingdom":3,"saints":4,"just_cause":3,"mafia":4][id] ?? 3 }
+    var artZoom: Double { mapArt?.zoom ?? 16 }
+    var artTilt: Double { let tilt = mapArt?.tilt ?? 0; return tilt > 0 ? tilt : 45 }
+    var defaultTilted: Bool { (mapArt?.tilt ?? 0) > 0 }
+    var routeWidth: Double { mapArt?.routeWidth ?? 3 }
     var hudBorder: Color? {
         switch id {
         case "division": return Color(hex: "9E7651")
@@ -164,19 +164,37 @@ extension World {
 struct AtlasShape: Shape {
     var cut: CGFloat = 0
     var round: CGFloat = 0
+    var reverseCut = false
+    var allCorners = false
     func path(in rect: CGRect) -> Path {
         if round > 0 { return Path(roundedRect: rect, cornerRadius: round) }
         var p = Path()
+        if allCorners {
+            p.move(to: CGPoint(x: rect.minX + cut, y: rect.minY))
+            p.addLine(to: CGPoint(x: rect.maxX - cut, y: rect.minY)); p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + cut))
+            p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - cut)); p.addLine(to: CGPoint(x: rect.maxX - cut, y: rect.maxY))
+            p.addLine(to: CGPoint(x: rect.minX + cut, y: rect.maxY)); p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - cut))
+            p.addLine(to: CGPoint(x: rect.minX, y: rect.minY + cut)); p.closeSubpath()
+            return p
+        }
         p.move(to: CGPoint(x: rect.minX + cut, y: rect.minY)); p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
         p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - cut)); p.addLine(to: CGPoint(x: rect.maxX - cut, y: rect.maxY))
         p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY)); p.addLine(to: CGPoint(x: rect.minX, y: rect.minY + cut)); p.closeSubpath()
-        return p
+        return reverseCut ? p.applying(CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: rect.minX + rect.maxX, ty: 0)) : p
+    }
+}
+
+extension World {
+    var panelShape: AtlasShape {
+        let cut: CGFloat = ["night_city", "heat", "spider"].contains(id) ? 10 : ["division", "field_ops"].contains(id) ? 8 : id == "stalker" ? 4 : 0
+        let round: CGFloat = id == "home_console" ? 12 : id == "aincrad" ? 4 : ["ctos", "horizon", "old_west", "rivia"].contains(id) ? 3 : 0
+        return AtlasShape(cut: cut, round: round, reverseCut: ["division", "field_ops"].contains(id), allCorners: id == "stalker")
     }
 }
 
 extension View {
     func atlasPanel(_ world: World) -> some View {
-        let shape = AtlasShape(cut: ["night_city","heat","spider"].contains(world.id) ? 10 : 0, round: ["ctos","horizon","old_west","rivia"].contains(world.id) ? 3 : 0)
+        let shape = world.panelShape
         return foregroundStyle(world.theme.foreground).background(world.theme.panel).clipShape(shape)
             .overlay(shape.stroke(world.hudBorder ?? .clear, lineWidth: world.id == "pixel" ? 2 : 1))
     }

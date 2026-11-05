@@ -73,6 +73,7 @@ final class LocationSource: NSObject, LocationProviding, CLLocationManagerDelega
         manager.stopUpdatingLocation()
         manager.stopUpdatingHeading()
         headingArbiter.reset()
+        lastHeading = nil
         refreshHeading()
     }
 
@@ -113,9 +114,10 @@ final class LocationSource: NSObject, LocationProviding, CLLocationManagerDelega
         guard let latest = fresh.last else { return }
         fix = latest
         headingArbiter.observeLocation(course: latest.course, speed: latest.speed,
-            courseAccuracy: latest.courseAccuracy, speedAccuracy: latest.speedAccuracy,
+            courseAccuracy: latest.courseAccuracy >= 0 ? latest.courseAccuracy : nil,
+            speedAccuracy: latest.speedAccuracy >= 0 ? latest.speedAccuracy : nil,
             reliable: latest.horizontalAccuracy <= 60 && manager.accuracyAuthorization == .fullAccuracy,
-            mode: mode, at: ProcessInfo.processInfo.systemUptime - max(0, Date().timeIntervalSince(latest.timestamp)))
+            mode: mode, at: ElapsedClock.now - max(0, Date().timeIntervalSince(latest.timestamp)))
         refreshHeading()
         problem = manager.accuracyAuthorization == .reducedAccuracy
             ? "Precise Location is off. " + permissionHelp
@@ -126,7 +128,7 @@ final class LocationSource: NSObject, LocationProviding, CLLocationManagerDelega
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         let degrees = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
         headingArbiter.observeCompass(degrees, reliable: newHeading.headingAccuracy >= 0 && newHeading.headingAccuracy <= 45,
-            at: ProcessInfo.processInfo.systemUptime - max(0, Date().timeIntervalSince(newHeading.timestamp)))
+            at: ElapsedClock.now - max(0, Date().timeIntervalSince(newHeading.timestamp)))
         refreshHeading()
         if headingDegrees != nil {
             lastHeading = Heading(clHeading: newHeading)
@@ -135,7 +137,7 @@ final class LocationSource: NSObject, LocationProviding, CLLocationManagerDelega
     }
 
     private func refreshHeading() {
-        let reading = headingArbiter.current(at: ProcessInfo.processInfo.systemUptime)
+        let reading = headingArbiter.current(at: ElapsedClock.now)
         headingDegrees = reading.reliable ? reading.degrees : nil
         headingSource = reading.source
     }

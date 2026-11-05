@@ -19,4 +19,9 @@ final class WorldVoiceTests: XCTestCase {
         XCTAssertEqual(narrator.decorate("Head north", distance: 180, world: "example", voice: voice, at: 1), "Head north. Opening two.")
         XCTAssertEqual(narrator.decorate("You have arrived at your destination", distance: 0, world: "example", voice: voice, at: 2), "You have arrived at your destination. Arrival line.")
     }
+    func testUnitPreferenceCanChangeAfterRoutePreparation() {
+        XCTAssertEqual(GuidanceSpeech.usingUnits("In 180 metres, Turn left onto Example Road", imperial: true), "In 600 feet, Turn left onto Example Road")
+        XCTAssertEqual(GuidanceSpeech.usingUnits("In 600 feet, Turn left onto Example Road", imperial: false), "In 180 metres, Turn left onto Example Road")
+        XCTAssertEqual(GuidanceSpeech.usingUnits("Turn right onto 180 Metres Road", imperial: true), "Turn right onto 180 Metres Road")
+    }
 }

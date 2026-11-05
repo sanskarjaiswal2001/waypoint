@@ -49,6 +49,8 @@ jobs:
         run: brew install xcodegen
       - name: Build and package device IPA
         run: bash scripts/build_ios.sh
+      - name: Verify packaged world and font coverage
+        run: python3 scripts/verify_ios_package.py ios/build/release/Waypoint-iOS-unsigned.ipa
       - name: Save unsigned IPA
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -70,6 +72,8 @@ jobs:
           simulator_id=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; devices=json.load(sys.stdin)["devices"]; print(next(d["udid"] for runtime in reversed(list(devices.values())) for d in runtime if d["name"].startswith("iPhone")))')
           xcodebuild test -project ios/Waypoint.xcodeproj -scheme Waypoint \
             -destination "platform=iOS Simulator,id=$simulator_id" \
+            -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 420 \
             -derivedDataPath ios/build/DerivedData -resultBundlePath ios/build/UITests.xcresult \
             CODE_SIGNING_ALLOWED=NO
       - name: Save simulator test results

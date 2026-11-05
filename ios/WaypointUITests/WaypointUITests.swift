@@ -35,8 +35,10 @@ final class WaypointUITests: XCTestCase {
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.switches["Spoken directions"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.switches["Miles and feet"].exists)
-        for _ in 0..<5 { if app.staticTexts["0.3.0"].isHittable { break }; app.swipeUp() }
-        XCTAssertTrue(app.staticTexts["0.3.0"].exists)
+        let version = app.descendants(matching: .any).matching(identifier: "app-version").firstMatch
+        for _ in 0..<8 { if version.exists && version.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(version.waitForExistence(timeout: 5))
+        XCTAssertTrue(version.label.contains("0.3.0"))
         for _ in 0..<5 { if app.buttons["Replay introduction"].isHittable { break }; app.swipeDown() }
         app.buttons["Replay introduction"].tap()
         XCTAssertTrue(app.buttons["Skip introduction"].waitForExistence(timeout: 5))
@@ -60,5 +62,42 @@ final class WaypointUITests: XCTestCase {
         XCTAssertTrue(preview.isHittable)
         app.swipeUp()
         XCTAssertTrue(preview.isHittable)
+    }
+    func testQuestsExplicitCompletionUndoAndSavedRenameSurviveRelaunch() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-waypoint-ui-testing", "-waypoint-skip-intro", "-waypoint-places-fixture"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Quests"].waitForExistence(timeout: 10))
+        app.buttons["Quests"].tap()
+        app.buttons["Add a quest"].tap()
+        let title = app.textFields["Quest title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        title.tap(); title.typeText("Example task")
+        app.buttons["Save quest"].tap()
+        XCTAssertTrue(app.buttons["Complete quest"].waitForExistence(timeout: 5))
+        app.buttons["Complete quest"].tap()
+        XCTAssertTrue(app.buttons["Undo"].waitForExistence(timeout: 5))
+        app.buttons["Undo"].tap()
+        XCTAssertTrue(app.staticTexts["Example task"].exists)
+        app.buttons["Done"].tap()
+        app.buttons["Saved"].tap()
+        let place = app.buttons["place-public-museum"]
+        XCTAssertTrue(place.waitForExistence(timeout: 5))
+        place.press(forDuration: 1.2)
+        app.buttons["Rename"].tap()
+        let name = app.alerts.textFields.firstMatch
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "Example public museum".count) + "Example work")
+        app.alerts.buttons["Save name"].tap()
+        app.terminate()
+        app.launchArguments += ["-waypoint-preserve-preferences"]
+        app.launch()
+        app.buttons["Saved"].tap()
+        XCTAssertTrue(app.staticTexts["Example work"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        app.buttons["Quests"].tap()
+        XCTAssertTrue(app.staticTexts["Example task"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Complete quest"].exists)
     }
 }

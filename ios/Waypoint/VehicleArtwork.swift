@@ -4,9 +4,16 @@ import UIKit
 enum VehicleArtwork {
     static func image(_ livery: VehicleLivery, kind: String) -> UIImage {
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
-        return UIGraphicsImageRenderer(size: CGSize(width: 96, height: 104), format: format).image { renderer in
+        let size = livery.pixel ? CGSize(width: 24, height: 26) : CGSize(width: 96, height: 104)
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
+            if livery.pixel { renderer.cgContext.scaleBy(x: 0.25, y: 0.25) }
             let painter = Painter(context: renderer.cgContext, livery: livery)
             painter.draw(kind)
+        }
+        guard livery.pixel else { return image }
+        return UIGraphicsImageRenderer(size: CGSize(width: 96, height: 104), format: format).image { renderer in
+            renderer.cgContext.interpolationQuality = .none
+            image.draw(in: CGRect(x: 0, y: 0, width: 96, height: 104))
         }
     }
     private final class Painter {
@@ -25,6 +32,7 @@ enum VehicleArtwork {
             p.close(); return p
         }
         func shape(_ path: UIBezierPath, _ fill: UIColor? = nil, outline: Bool = true) {
+            path.lineJoinStyle = .round; path.lineCapStyle = .round
             if outline { light.setStroke(); path.lineWidth = 8; path.stroke(); ink.setStroke(); path.lineWidth = 5; path.stroke() }
             (fill ?? body).setFill(); path.fill()
             if wire && fill == nil { trim.setStroke(); path.lineWidth = 2; path.stroke() }

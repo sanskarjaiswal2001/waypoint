@@ -1,5 +1,13 @@
 import Foundation
 
+public enum GuidanceSpeech {
+    public static func usingUnits(_ text: String, imperial: Bool) -> String {
+        let source = imperial ? "In 180 metres, " : "In 600 feet, "
+        let target = imperial ? "In 600 feet, " : "In 180 metres, "
+        return text.hasPrefix(source) ? target + text.dropFirst(source.count) : text
+    }
+}
+
 public struct WorldVoice: Codable, Hashable, Sendable {
     public let openings: [String]
     public let cues: [String]

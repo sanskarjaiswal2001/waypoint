@@ -14,20 +14,19 @@ struct RoutingProvider: CustomRouteProvider {
     func getRoutes(userLocation: UserLocation, waypoints: [Waypoint]) async throws -> [Route] {
         guard let destination = waypoints.last else { throw ServiceError.noRoute }
         let origin = userLocation.coordinates
-        let data: Data
         do {
-            data = try await MapService().routeData(
+            let data = try await MapService().routeData(
                 from: Coordinate(latitude: origin.lat, longitude: origin.lng),
                 to: Coordinate(latitude: destination.coordinate.lat, longitude: destination.coordinate.lng), mode: mode, imperial: imperial)
+            try Task.checkCancellation()
+            let route = try createRouteFromOsrmRoute(routeData: data, waypoints: [
+                Waypoint(coordinate: origin, kind: .break), destination
+            ], polylinePrecision: 6)
+            return [route]
         } catch {
             if !Task.isCancelled { await onFailure?() }
             throw error
         }
-        try Task.checkCancellation()
-        let route = try createRouteFromOsrmRoute(routeData: data, waypoints: [
-            Waypoint(coordinate: origin, kind: .break), destination
-        ], polylinePrecision: 6)
-        return [route]
     }
 }
 
@@ -72,8 +71,9 @@ final class NavigationModel: NSObject {
     var availableUpdate: IOSRelease?
     var updateStatus: String?
     var checkingUpdates = false
-    @ObservationIgnored private var lastUpdateCheck: Date?
+    @ObservationIgnored private var lastUpdateCheck = UserDefaults.standard.object(forKey: "lastUpdateCheck") as? Date
     var headingDegrees: Double?
+    var headingSource: HeadingSource = .none
     var imperial = UserDefaults.standard.bool(forKey: "imperial") {
         didSet { UserDefaults.standard.set(imperial, forKey: "imperial") }
     }
@@ -154,6 +154,7 @@ final class NavigationModel: NSObject {
             if let fix = $0 { self?.updateCity(fix) }
         }.store(in: &subscriptions)
         location.$headingDegrees.receive(on: DispatchQueue.main).sink { [weak self] in self?.headingDegrees = $0 }.store(in: &subscriptions)
+        location.$headingSource.receive(on: DispatchQueue.main).sink { [weak self] in self?.headingSource = $0 }.store(in: &subscriptions)
         location.$problem.receive(on: DispatchQueue.main).sink { [weak self] problem in
             guard let self else { return }
             self.locationProblem = problem
@@ -166,6 +167,10 @@ final class NavigationModel: NSObject {
             showWelcome = false
             releaseNotesPending = false
             select(Place(id: "layout-fixture", name: String(repeating: "Example public demonstration destination ", count: 5), address: String(repeating: "Example address for layout testing. ", count: 12), coordinate: Coordinate(latitude: 51.5, longitude: -0.12)))
+        }
+        if ProcessInfo.processInfo.arguments.contains("-waypoint-skip-intro") { showWelcome = false; releaseNotesPending = false }
+        if ProcessInfo.processInfo.arguments.contains("-waypoint-places-fixture") && !ProcessInfo.processInfo.arguments.contains("-waypoint-preserve-preferences") {
+            saved = [Place(id: "public-museum", name: "Example public museum", address: "Public demonstration", coordinate: Coordinate(latitude: 51.5, longitude: -0.12))]
         }
         #endif
     }
@@ -232,12 +237,12 @@ final class NavigationModel: NSObject {
     }
 
     func mapGestureStarted() {
-        followPolicy.gestureStarted(at: ProcessInfo.processInfo.systemUptime)
+        followPolicy.gestureStarted(at: ElapsedClock.now)
         followLocation = false
     }
-    func mapGestureEnded() { followPolicy.gestureEnded(at: ProcessInfo.processInfo.systemUptime) }
+    func mapGestureEnded() { followPolicy.gestureEnded(at: ElapsedClock.now) }
     func refreshFollow() {
-        if followPolicy.shouldFollow(navigating: navigating, hasDestination: destination != nil, at: ProcessInfo.processInfo.systemUptime), !followLocation {
+        if followPolicy.shouldFollow(navigating: navigating, hasDestination: destination != nil, at: ElapsedClock.now), !followLocation {
             followLocation = true
             cameraRequest = UUID()
         }
@@ -301,6 +306,7 @@ final class NavigationModel: NSObject {
             let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0"
             availableUpdate = try IOSRelease.newerRelease(in: data, currentVersion: version)
             lastUpdateCheck = Date()
+            UserDefaults.standard.set(lastUpdateCheck, forKey: "lastUpdateCheck")
             updateStatus = availableUpdate.map { "Version \($0.version) is available." } ?? "No newer upstream iOS preview found."
         } catch { if !quiet { updateStatus = "The update check failed. Try again later or open iOS releases." } }
     }
@@ -350,7 +356,7 @@ final class NavigationModel: NSObject {
             snappedLocationCourseFiltering: .snapToRoute
         )
         let speaker = WorldSpeechSynthesizer { [weak self] in
-            (self?.world ?? World.all[0], self?.navigation?.currentProgress?.distanceToNextManeuver ?? 0, self?.themedVoice ?? false)
+            (self?.world ?? World.all[0], self?.navigation?.currentProgress?.distanceToNextManeuver ?? 0, self?.themedVoice ?? false, self?.imperial ?? false)
         }
         let engine = FerrostarCore(routeProvider: .customProvider(provider), locationProvider: location,
                                   navigationControllerConfig: config, networkSession: URLSession.shared,

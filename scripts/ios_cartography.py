@@ -22,7 +22,7 @@ ICONS = {
 }
 
 
-def add_discovery_layers(style, world):
+def add_discovery_layers(style, world, poi_scale=.55, light_labels=None):
     font = next(layer["layout"]["text-font"] for layer in style["layers"] if "text-font" in layer.get("layout", {}))
     icon = ["case"]
     for kind, classes in ICONS.items():
@@ -32,7 +32,7 @@ def add_discovery_layers(style, world):
             predicate = ["any", predicate, ["==", ["get", "subclass"], subclass]]
         icon += [predicate, "poi-" + kind]
     icon += ["poi-place"]
-    light = world not in {"old_west", "san_andreas", "rivia", "ctos", "lands_between", "ghost", "kingdom", "mafia"}
+    light = light_labels if light_labels is not None else world not in {"old_west", "san_andreas", "rivia", "ctos", "lands_between", "ghost", "kingdom", "mafia"}
     all_classes = sum((value[3] for value in GROUPS.values()), [])
     groups = {"other": (18.6, [], 999, [])} | GROUPS
     for name, (minimum, stops, initial, classes) in groups.items():
@@ -48,7 +48,7 @@ def add_discovery_layers(style, world):
         style["layers"].append({
             "id": "waypoint-" + name + "-places", "type": "symbol", "source": "openmaptiles", "source-layer": "poi", "minzoom": minimum,
             "filter": predicate,
-            "layout": {"icon-image": icon, "icon-size": 0.9 if name != "other" else 0.8, "icon-allow-overlap": False, "icon-padding": 5,
+            "layout": {"icon-image": icon, "icon-size": (0.9 if name != "other" else 0.8) * poi_scale / .55, "icon-allow-overlap": False, "icon-padding": 5,
                        "text-font": font, "text-field": ["step", ["zoom"], "", 17.2, ["coalesce", ["get", "name:en"], ["get", "name_en"], ["get", "name"], ""]],
                        "text-size": 10, "text-optional": True, "text-offset": [0, 2]},
             "paint": {"text-color": "#EEEEDF" if light else "#282E26", "text-halo-color": "#18201C" if light else "#E3DABF", "text-halo-width": 1.5}

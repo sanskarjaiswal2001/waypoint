@@ -9,6 +9,15 @@ struct VehicleLivery: Decodable, Hashable {
     let pixel: Bool
     let wire: Bool
 }
+struct MapArt: Decodable, Hashable {
+    let tilt: Double
+    let zoom: Double
+    let routeWidth: Double
+    let poiScale: Double
+    let marker: String
+    let player: String
+    let lightLabels: Bool
+}
 
 struct World: Decodable, Identifiable, Hashable {
     let id: String
@@ -21,6 +30,7 @@ struct World: Decodable, Identifiable, Hashable {
     var voice: WorldVoice? = nil
     var titleTypeface: String? = nil
     var readingTypeface: String? = nil
+    var mapArt: MapArt? = nil
 
     var accent: Color { Color(hex: accentHex) }
     var routeColor: UIColor { UIColor(hex: routeHex) }

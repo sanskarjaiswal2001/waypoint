@@ -122,13 +122,16 @@ public actor PlaceSearch {
         let aliasNote = effective != query ? "Searching for \(effective)" : nil
         let area = near.map { "\(($0.latitude * 100).rounded()):\(($0.longitude * 100).rounded())" } ?? "global"
         let key = "\(PlaceMatcher.normalize(query)):\(area):\(expanded)"
-        if let cached = cache[key] { return PlaceSearchResult(places: PlaceMatcher.ranked(effective, near: near, places: cached + local), note: aliasNote) }
-        var remote = [Place](), failures = 0, completed = 0
+        if let cached = cache[key] {
+            let places = PlaceMatcher.ranked(effective, near: near, places: cached + local)
+            return PlaceSearchResult(places: places, note: Self.successNote(places, query: effective, alias: aliasNote))
+        }
+        var remote = [Place](), failures = 0
         func lookup(_ provider: @escaping Provider, _ value: String) async throws {
             do {
                 let found = try await Self.lookup(provider, value, near: near, timeout: timeout)
                 try Task.checkCancellation()
-                remote.append(contentsOf: found.prefix(20)); completed += 1
+                remote.append(contentsOf: found.prefix(20))
             } catch {
                 try Task.checkCancellation()
                 if error is CancellationError { throw error }
@@ -149,10 +152,14 @@ public actor PlaceSearch {
         }
         let note: String?
         if failures > 0 { note = places.isEmpty ? "Search service unavailable. Try again or drop a pin on the map." : "Some search services are unavailable. Showing the matches found." }
-        else if places.isEmpty && completed > 0 { note = "No matching place found. Try another spelling, add the town, or drop a pin on the map." }
-        else if !places.contains(where: { PlaceMatcher.score(effective, $0) >= 0.8 }) { note = "Possible matches. Check the name and address before choosing." }
-        else { note = aliasNote }
+        else { note = Self.successNote(places, query: effective, alias: aliasNote) }
         return PlaceSearchResult(places: places, note: note)
+    }
+
+    private static func successNote(_ places: [Place], query: String, alias: String?) -> String? {
+        if places.isEmpty { return "No matching place found. Try another spelling, add the town, or drop a pin on the map." }
+        if !places.contains(where: { PlaceMatcher.score(query, $0) >= 0.8 }) { return "Possible matches. Check the name and address before choosing." }
+        return alias
     }
 
     private static func lookup(_ provider: @escaping Provider, _ query: String, near: Coordinate?, timeout: Duration) async throws -> [Place] {

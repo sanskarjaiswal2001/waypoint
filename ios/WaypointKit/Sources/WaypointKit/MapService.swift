@@ -63,7 +63,7 @@ public struct MapService: Sendable {
 
     private func fetch(_ url: URL, limit: Int, timeout: TimeInterval = 25) async throws -> Data {
         var request = URLRequest(url: url, timeoutInterval: timeout)
-        request.setValue("WaypointiOS/0.1 (https://github.com/the-geeky-couldron/waypoint)", forHTTPHeaderField: "User-Agent")
+        request.setValue("WaypointiOS/0.3 (https://github.com/the-geeky-couldron/waypoint)", forHTTPHeaderField: "User-Agent")
         let (bytes, response) = try await URLSession.shared.bytes(for: request)
         guard let response = response as? HTTPURLResponse else { throw ServiceError.invalidResponse }
         guard response.statusCode == 200 else { throw ServiceError.http(response.statusCode) }

@@ -26,13 +26,17 @@ source = (ROOT / "app/src/main/java/com/waypoint/app/World.kt").read_text()
 worlds = read_worlds(source)
 validate_worlds(ROOT, worlds)
 typefaces(ROOT, worlds)
+cartography = (ROOT / "app/src/main/java/com/waypoint/app/Cartography.kt").read_text()
+map_art = {name: dict(tilt=float(tilt), zoom=float(zoom), routeWidth=float(width), poiScale=float(scale), marker=marker, player=player, lightLabels=light == "true")
+           for name, tilt, zoom, width, scale, marker, player, light in re.findall(
+               r'World\.(\w+)->MapArt\(([.0-9]+),([.0-9]+),([.0-9]+)f,([.0-9]+)f,MarkerArt\.(\w+),PlayerArt\.(\w+),(true|false)\)', cartography)}
 vehicle_source = (ROOT / "app/src/main/java/com/waypoint/app/VehicleMarkers.kt").read_text()
 vehicles = {name: dict(car=car, bike=bike, body=body, trim=trim, pixel="pixel=true" in flags, wire="wire=true" in flags)
             for name, car, bike, body, trim, flags in re.findall(
                 r'World\.(\w+) -> VehicleLivery\(WorldTransport\.(\w+),WorldTransport\.(\w+),"(#[A-Fa-f0-9]+)","(#[A-Fa-f0-9]+)"([^)]*)\)', vehicle_source)}
 voice_source = (ROOT / "app/src/main/java/com/waypoint/app/WorldVoice.kt").read_text()
 voices = {name: dict(openings=[opening], cues=[cue], arrivals=[arrival], rate=float(rate), pitch=float(pitch))
-          for name, opening, cue, arrival, rate, pitch in re.findall(
+          for name, opening, cue, arrival, pitch, rate in re.findall(
               r'World\.(\w+) -> WorldVoiceStyle\("([^"]*)","([^"]*)","([^"]*)",([.0-9]+)f,([.0-9]+)f\)', voice_source)}
 lines_source = (ROOT / "app/src/main/java/com/waypoint/app/WorldVoiceLines.kt").read_text()
 for name, body in re.findall(r'World\.(\w+) -> style\.withLines\((.*?)\)', lines_source, re.S):
@@ -44,12 +48,14 @@ for world in worlds:
     if name not in vehicles or name not in voices: raise SystemExit("Missing vehicle or voice treatment for " + name)
     world["vehicle"] = vehicles[name]
     world["voice"] = voices[name]
+    if name not in map_art: raise SystemExit("Missing map treatment for " + name)
+    world["mapArt"] = map_art[name]
 for world in worlds:
     if not (DEST / "styles" / (world["id"] + ".json")).is_file():
         raise SystemExit("Missing style for " + world["id"])
     style_path = DEST / "styles" / (world["id"] + ".json")
     style = json.loads(style_path.read_text())
-    add_discovery_layers(style, world["id"])
+    add_discovery_layers(style, world["id"], world["mapArt"]["poiScale"], world["mapArt"]["lightLabels"])
     style_path.write_text(json.dumps(style, separators=(",", ":")))
 (DEST / "worlds.json").write_text(json.dumps(worlds, indent=2) + "\n")
 

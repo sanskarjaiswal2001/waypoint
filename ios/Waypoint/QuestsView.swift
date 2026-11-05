@@ -51,7 +51,7 @@ struct QuestsView: View {
                 }
                 Section {
                     NavigationLink("Your journey") { QuestProfileView(quests: model.quests) }
-                    Text("This preview has no quest alerts, photo attachments or background reminder service. The focus timer restores when you reopen the app.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Focus timers do not send background alerts. Reopen Quests to check the timer.").font(.footnote).foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Quests")

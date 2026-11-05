@@ -46,12 +46,12 @@ import WaypointKit
     func undo(_ id: UUID) { if change({ $0.reopen(id) }) { lastCompleted = nil } }
     func delete(_ id: UUID) { if change({ $0.delete(id) }) && lastCompleted == id { lastCompleted = nil } }
     func startFocus(_ id: UUID) {
-        _ = change { _ = $0.startFocus(id, uptime: ProcessInfo.processInfo.systemUptime, now: Date(), bootID: Self.bootID) }
+        _ = change { _ = $0.startFocus(id, uptime: ElapsedClock.now, now: Date(), bootID: Self.bootID) }
     }
     var focusSeconds: Int {
-        Int(ceil(book.focus?.secondsLeft(uptime: ProcessInfo.processInfo.systemUptime, now: now, bootID: Self.bootID) ?? 0))
+        Int(ceil(book.focus?.secondsLeft(uptime: ElapsedClock.now, now: now, bootID: Self.bootID) ?? 0))
     }
-    func pauseFocus() { _ = change { $0.focus?.pause(uptime: ProcessInfo.processInfo.systemUptime, now: Date(), bootID: Self.bootID) } }
-    func resumeFocus() { _ = change { $0.focus?.resume(uptime: ProcessInfo.processInfo.systemUptime, now: Date(), bootID: Self.bootID) } }
-    func finishFocus(_ confirmed: Bool) { _ = change { $0.finishFocus(confirm: confirmed, uptime: ProcessInfo.processInfo.systemUptime, now: Date(), bootID: Self.bootID) } }
+    func pauseFocus() { _ = change { $0.focus?.pause(uptime: ElapsedClock.now, now: Date(), bootID: Self.bootID) } }
+    func resumeFocus() { _ = change { $0.focus?.resume(uptime: ElapsedClock.now, now: Date(), bootID: Self.bootID) } }
+    func finishFocus(_ confirmed: Bool) { _ = change { $0.finishFocus(confirm: confirmed, uptime: ElapsedClock.now, now: Date(), bootID: Self.bootID) } }
 }

@@ -1,0 +1,3 @@
+iOS font metadata
+
+The staged Stratum 2 copies use corrected family, style and PostScript names so Core Text can register both weights. The source files are unchanged. Glyph outlines, other font tables and the original copyright/licence records are retained. The iOS staging tests check these properties.

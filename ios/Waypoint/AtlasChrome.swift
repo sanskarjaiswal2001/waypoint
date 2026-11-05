@@ -402,7 +402,7 @@ private enum AnyAtlasShape: Shape {
     func path(in rect: CGRect) -> Path {
         switch self {
         case .circle: return Circle().path(in: rect)
-        case .panel(let w): return AtlasShape(cut: ["night_city","heat","spider"].contains(w.id) ? 10 : 0, round: ["ctos","horizon","old_west","rivia"].contains(w.id) ? 3 : 0).path(in: rect)
+        case .panel(let w): return w.panelShape.path(in: rect)
         }
     }
 }

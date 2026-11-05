@@ -68,11 +68,12 @@ public struct QuestBook: Codable, Equatable, Sendable {
         if let index = quests.firstIndex(where: { $0.id == quest.id }) {
             quest.completedAt = quests[index].completedAt
             quest.focusFinished = quests[index].focusFinished
+            quest.focusCreditMinutes = quests[index].focusCreditMinutes
             guard focus?.questID != quest.id || quests[index].focusMinutes == quest.focusMinutes else { throw ServiceError.invalidResponse }
             quests[index] = quest
         } else {
             guard quests.count < 500 else { throw ServiceError.tooLarge }
-            quest.completedAt = nil; quest.focusFinished = false; quests.insert(quest, at: 0)
+            quest.completedAt = nil; quest.focusFinished = false; quest.focusCreditMinutes = nil; quests.insert(quest, at: 0)
         }
     }
     @discardableResult public mutating func complete(_ id: UUID, at now: Date = Date()) -> Bool {

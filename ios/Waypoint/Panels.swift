@@ -133,7 +133,7 @@ struct PlacesView: View {
         }
     }
     private func row(_ place: Place) -> some View {
-        Button { model.select(place); dismiss() } label: { VStack(alignment: .leading, spacing: 5) { Text(place.name).foregroundStyle(.primary); Text(place.address).font(.caption).foregroundStyle(.secondary) }.padding(.vertical, 4) }
+        Button { model.select(place); dismiss() } label: { VStack(alignment: .leading, spacing: 5) { Text(place.name).foregroundStyle(.primary); Text(place.address).font(.caption).foregroundStyle(.secondary) }.padding(.vertical, 4) }.accessibilityIdentifier("place-\(place.id)")
     }
 }
 
@@ -161,6 +161,7 @@ struct SettingsView: View {
     let replayIntroduction: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var clearConfirm = false
+    private var appVersion: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0" }
     var body: some View {
         NavigationStack {
             List {
@@ -176,7 +177,7 @@ struct SettingsView: View {
                     LabeledContent("Status", value: model.fixLabel)
                     if let fix = model.fix { LabeledContent("Accuracy", value: "±\(Int(fix.horizontalAccuracy.rounded())) m"); LabeledContent("Last reading", value: "\(max(0, Int(-fix.timestamp.timeIntervalSinceNow))) seconds ago") }
                     LabeledContent("Heading", value: model.bearing.map { "\(Int($0.rounded()))°" } ?? "Unavailable")
-                    LabeledContent("Heading source", value: model.location.headingSource == .course ? "GPS course" : model.location.headingSource == .compass ? "Compass" : "Waiting for sensors")
+                    LabeledContent("Heading source", value: model.headingSource == .course ? "GPS course" : model.headingSource == .compass ? "Compass" : "Waiting for sensors")
                     LabeledContent("Provider", value: "Core Location")
                     if let problem = model.locationProblem { Text(problem).font(.footnote) }
                     Button("Find my location", action: model.locate)
@@ -189,7 +190,8 @@ struct SettingsView: View {
                 Section("Feedback") { NavigationLink("Send feedback") { FeedbackView(world: model.world) } }
                 Section("Waypoint for iOS") {
                     Text("Real streets. Another world.").font(SharedArt.font("barlow_condensed_bold", 24))
-                    LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0")
+                    LabeledContent("Version", value: appVersion)
+                        .accessibilityElement(children: .ignore).accessibilityLabel("Version \(appVersion)").accessibilityIdentifier("app-version")
                     NavigationLink("What's new") { ReleaseNotesView(model: model) }
                     Button(model.checkingUpdates ? "Checking…" : "Check for updates") { Task { await model.checkForUpdate() } }.disabled(model.checkingUpdates || model.navigating)
                     if let status = model.updateStatus { Text(status).font(.footnote) }

@@ -1,6 +1,6 @@
 # Waypoint for iOS
 
-A native SwiftUI port for iPhone and iPad on iOS 17 or later. Development and Android parity checks are ongoing. The app shares Android's 27 MapLibre styles, map fonts, patterns and online providers, with Ferrostar 0.59.0 for guidance.
+A native SwiftUI port for iPhone and iPad on iOS 17 or later. The 0.3.0 branch follows upstream Android 2.0.1 and its 38 worlds. Development and Android parity checks are ongoing. The app shares Android's MapLibre styles, map fonts, patterns and online providers, with Ferrostar 0.59.0 for guidance.
 
 [Upstream issue #12](https://github.com/the-geeky-couldron/waypoint/issues/12) tracks the port and remaining work.
 
@@ -11,7 +11,7 @@ This is an experimental preview. Navigation is reported working through LiveCont
 ## Install through SideStore or AltStore Classic
 
 1. Set up [SideStore](https://docs.sidestore.io/docs/installation/install) or [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) using its official instructions. Enable Developer Mode on the device if the installer requests it.
-2. Open this fork's [Releases](https://github.com/sanskarjaiswal2001/waypoint/releases) and download **Waypoint-iOS-unsigned.ipa** from an iOS preview release to Files on your device.
+2. Open [upstream Releases](https://github.com/the-geeky-couldron/waypoint/releases) and look for an `ios-v*` preview containing **Waypoint-iOS-unsigned.ipa**. Before an upstream iOS release is published, [contribution previews on the fork](https://github.com/sanskarjaiswal2001/waypoint/releases) are separate downloads for testing; they have not been merged or released upstream.
 3. In SideStore or AltStore Classic, open **My Apps**, tap **+**, and choose the downloaded IPA. The installer signs it with your account and installs it.
 4. Open Waypoint, choose a world and tap **Open map**. Tap **Locate**, allow location access with **Precise Location** enabled, then search for a destination or hold the map to drop a pin.
 5. Choose Car, Motorcycle or Walk, tap **Preview route**, and review it before starting navigation.
@@ -91,11 +91,15 @@ Before tagging, update `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `ios
 ## Privacy, services and validation
 
 - Map tiles and labels: OpenFreeMap / OpenStreetMap; terrain: Mapzen.
-- Place search: Photon. The query and optional nearby position are sent to the service.
-- Car routes: OSRM. Motorcycle and walking routes: Valhalla using their distinct costing profiles.
+- Place search: Photon, with Apple's address geocoder as fallback. The query and optional nearby position go to the selected provider. Saved/recent matches and the bounded cache stay on the device.
+- Car routes: OSRM. Motorcycle, Bicycle and Walk: Valhalla using distinct costing profiles.
 - Guidance: Ferrostar on-device, with iOS text-to-speech and Core Location.
 - Saved places, recent destinations and selected world: local app preferences. No account or analytics service.
-- City label: Core Location reverse geocoding. Release checks: the fork's public GitHub releases, without location data.
+- City label: Core Location reverse geocoding. Release checks and feedback: the upstream GitHub repository, without location data. Update links are restricted to its `ios-v*` releases.
+
+Quests stores its task/focus/reward data in private app storage. Completion is explicit and supports Undo; arrival never completes a task. The current iOS flow omits photos, quest notifications and some Android reward presentation. See [Quests on iOS](QUESTS.md) and the [feature comparison](PARITY.md).
+
+Paste a supported Google Maps link, coordinates or address to propose a destination. Short links are resolved only after confirmation and only through allowed HTTPS Google Maps hosts. Share destination and Open in Google Maps send the selected destination when tapped. The destination card keeps Preview route or Start navigation visible while longer content scrolls.
 
 Location is requested only after **Locate** or an explicit route preview. Background location is enabled only while navigating. Ending a trip releases background location and the screen-awake state. The map can be browsed without granting location. Search needs no GPS fix, while route preview and navigation require a recent position with adequate accuracy. Online providers can be unavailable or rate-limited. There is no offline routing, live traffic or lane guidance.
 

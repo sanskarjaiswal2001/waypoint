@@ -49,6 +49,15 @@ final class PlaceSearchTests: XCTestCase {
         count = await calls.count
         XCTAssertEqual(count, 1)
     }
+    func testWeakCachedMatchesRetainTheirWarning() async throws {
+        let station = place()
+        let search = PlaceSearch(primary: { _, _ in [station] })
+        for _ in 0..<2 {
+            let result = try await search.search("Rivertam", near: near)
+            XCTAssertEqual(result.places, [station])
+            XCTAssertTrue(result.note?.contains("Possible matches") == true)
+        }
+    }
     func testOutageKeepsFallbackAndLocalMatchesWithoutCachingFailure() async throws {
         let station = place(), calls = Calls()
         let search = PlaceSearch(primary: { _, _ in await calls.add(); throw URLError(.notConnectedToInternet) }, fallback: { _, _ in [station] })

@@ -14,6 +14,15 @@ def tables(data):
     return result
 
 
+def name_records(data):
+    _, count, start = struct.unpack_from(">HHH", data)
+    records = {}
+    for index in range(count):
+        platform, encoding, language, key, size, offset = struct.unpack_from(">HHHHHH", data, 6 + index * 12)
+        records[platform, encoding, language, key] = data[start + offset:start + offset + size]
+    return records
+
+
 class FontTests(unittest.TestCase):
     def test_only_names_and_checksum_change_and_second_pass_is_stable(self):
         root = Path(__file__).resolve().parents[1]
@@ -30,6 +39,9 @@ class FontTests(unittest.TestCase):
                 self.assertEqual(set(before), set(after))
                 for tag in before.keys() - {b"head", b"name"}: self.assertEqual(before[tag], after[tag], tag)
                 self.assertEqual(before[b"head"][:8] + before[b"head"][12:], after[b"head"][:8] + after[b"head"][12:])
+                old_names, new_names = name_records(before[b"name"]), name_records(after[b"name"])
+                for key, value in old_names.items():
+                    if key[3] not in (1, 2, 4, 6): self.assertEqual(value, new_names[key])
                 self.assertFalse(normalize_stratum(target))
                 self.assertEqual(target.read_bytes(), fixed)
             self.assertEqual(source.read_bytes(), original)
